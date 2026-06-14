@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from courtvision.artifact_store import ModelArtifactStore, model_artifact_store
 from courtvision.database import SessionFactory
 from courtvision.model_runtime import current_model_runtime
 from courtvision.models import ModelActivation, ModelVersion
@@ -108,6 +109,12 @@ class PromotionRejectedError(RuntimeError):
 class ModelRegistry:
     max_expected_calibration_error = 0.05
 
+    def __init__(
+        self,
+        artifact_store: ModelArtifactStore = model_artifact_store,
+    ) -> None:
+        self.artifact_store = artifact_store
+
     async def register_and_activate(
         self,
         session: AsyncSession,
@@ -193,6 +200,28 @@ class ModelRegistry:
                 "The model version is already registered with a different artifact"
             )
 
+        artifact_uri = await self.artifact_store.publish(
+            artifact_path,
+            model_type=manifest.model_type,
+            version=manifest.model_version,
+            artifact_kind="model",
+            expected_sha256=artifact_sha256,
+        )
+        calibration_uri = None
+        calibration_sha256 = None
+        if calibration_path is not None:
+            calibration_sha256 = await asyncio.to_thread(
+                self._sha256,
+                calibration_path,
+            )
+            calibration_uri = await self.artifact_store.publish(
+                calibration_path,
+                model_type=manifest.model_type,
+                version=manifest.model_version,
+                artifact_kind="calibration",
+                expected_sha256=calibration_sha256,
+            )
+
         now = datetime.now(UTC)
         candidate = existing or ModelVersion(
             model_type=manifest.model_type,
@@ -204,11 +233,9 @@ class ModelRegistry:
         if existing is None:
             session.add(candidate)
 
-        candidate.artifact_uri = str(artifact_path.resolve())
+        candidate.artifact_uri = artifact_uri
         candidate.artifact_sha256 = artifact_sha256
-        candidate.calibration_uri = (
-            str(calibration_path.resolve()) if calibration_path else None
-        )
+        candidate.calibration_uri = calibration_uri
         candidate.feature_schema = {
             "features": manifest.features,
             "schema_version": manifest.feature_schema_version,
@@ -227,6 +254,8 @@ class ModelRegistry:
             ),
             "previous_active_version": active.version if active else None,
             "reason": reason,
+            "artifact_storage": self.artifact_store.config.backend,
+            "calibration_sha256": calibration_sha256,
         }
 
         if active is not None and active.id != candidate.id:
@@ -284,13 +313,10 @@ class ModelRegistry:
             raise ValueError("Rollback target does not have a registered artifact")
         if target.promotion_metadata.get("runtime") != current_model_runtime():
             raise ValueError("Rollback artifact runtime is incompatible")
-        target_path = Path(target.artifact_uri)
-        if not target_path.is_file():
-            raise FileNotFoundError(
-                f"Rollback artifact is unavailable: {target.artifact_uri}"
-            )
-        if await asyncio.to_thread(self._sha256, target_path) != target.artifact_sha256:
-            raise ValueError("Rollback artifact hash does not match the registry")
+        await self.artifact_store.read_verified(
+            target.artifact_uri,
+            target.artifact_sha256,
+        )
         if active is not None and active.id == target.id:
             return RegistryResult(
                 model_type=model_type,

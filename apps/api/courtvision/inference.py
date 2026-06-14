@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
 from dataclasses import dataclass
 from io import BytesIO
-from pathlib import Path
 from typing import Any
 
 import joblib
@@ -13,6 +11,11 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from courtvision.artifact_store import (
+    ArtifactIntegrityError,
+    ModelArtifactStore,
+    model_artifact_store,
+)
 from courtvision.model_contracts import MODEL_CONTRACTS, ModelContract
 from courtvision.model_runtime import current_model_runtime
 from courtvision.models import ModelVersion
@@ -74,7 +77,11 @@ class LoadedModel:
 
 
 class ActiveModelResolver:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        artifact_store: ModelArtifactStore = model_artifact_store,
+    ) -> None:
+        self._artifact_store = artifact_store
         self._cache: dict[tuple[str, str, str], LoadedModel] = {}
         self._load_lock = asyncio.Lock()
 
@@ -124,6 +131,14 @@ class ActiveModelResolver:
                 }
                 self._cache[cache_key] = loaded
                 return loaded
+        except ArtifactIntegrityError as exc:
+            logger.error(
+                "active_model_integrity_failure",
+                model_type=model_type,
+                model_version=registered.version,
+                reason=str(exc),
+            )
+            return None
         except Exception as exc:
             logger.warning(
                 "active_model_unavailable",
@@ -153,19 +168,18 @@ class ActiveModelResolver:
                 "Artifact runtime versions do not match the API environment"
             )
 
-    @staticmethod
     def _load_artifact(
+        self,
         registered: ModelVersion,
         contract: ModelContract,
     ) -> LoadedModel:
         assert registered.artifact_uri is not None
         assert registered.artifact_sha256 is not None
 
-        artifact_path = Path(registered.artifact_uri)
-        artifact_bytes = artifact_path.read_bytes()
-        artifact_sha256 = hashlib.sha256(artifact_bytes).hexdigest()
-        if artifact_sha256 != registered.artifact_sha256:
-            raise ModelArtifactError("Artifact SHA-256 does not match the registry")
+        artifact_bytes = self._artifact_store.read_verified_sync(
+            registered.artifact_uri,
+            registered.artifact_sha256,
+        )
 
         model = joblib.load(BytesIO(artifact_bytes))
         if not callable(getattr(model, "predict_proba", None)):

@@ -48,6 +48,22 @@ class RequestFailureClassifier(ConstantBinaryClassifier):
         return super().predict_proba(frame)
 
 
+class InMemoryArtifactStore:
+    def __init__(self, artifact_bytes: bytes) -> None:
+        self.artifact_bytes = artifact_bytes
+        self.read_count = 0
+
+    def read_verified_sync(
+        self,
+        artifact_uri: str,
+        expected_sha256: str,
+    ) -> bytes:
+        self.read_count += 1
+        assert artifact_uri
+        assert hashlib.sha256(self.artifact_bytes).hexdigest() == expected_sha256
+        return self.artifact_bytes
+
+
 def write_artifact(
     path: Path,
     contract: ModelContract,
@@ -433,6 +449,32 @@ async def test_concurrent_cold_cache_loads_artifact_once(
 
     assert first is second
     assert load_count == 1
+
+
+async def test_resolver_reads_injected_remote_store_only_once(
+    database,
+    tmp_path: Path,
+):
+    artifact = tmp_path / "remote.joblib"
+    artifact_hash = write_artifact(artifact, PREGAME_CONTRACT, 0.77)
+    artifact_bytes = artifact.read_bytes()
+    await activate_artifact(
+        PREGAME_CONTRACT,
+        version="test-pregame-remote",
+        artifact=artifact,
+        artifact_sha256=artifact_hash,
+    )
+    artifact.unlink()
+    store = InMemoryArtifactStore(artifact_bytes)
+    resolver = ActiveModelResolver(artifact_store=store)
+
+    async with SessionFactory() as session:
+        first = await resolver.resolve(session, "pregame")
+        second = await resolver.resolve(session, "pregame")
+
+    assert first is not None and first.version == "test-pregame-remote"
+    assert second is first
+    assert store.read_count == 1
 
 
 async def test_resolver_loads_new_artifact_after_promotion(

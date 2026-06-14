@@ -22,9 +22,10 @@ CourtVision AI has a verified replay-first vertical slice:
 
 The latest complete local verification passed:
 
-- Backend and ML: 63 tests
+- Backend and ML: 75 tests
 - Ruff: clean
-- Web: ESLint, TypeScript, Vitest, Next.js production build
+- Web: ESLint, TypeScript, Vitest, Next.js production build, and Playwright
+  desktop/mobile dashboard interaction through the installed Chrome channel
 - Swift: simulator build/run with no diagnostics and 5 XCTest cases
 - Native acceptance: populated fixture dashboard, game room, model/freshness
   metadata, win-probability chart, shot map selection, and timeline
@@ -38,6 +39,9 @@ The latest complete local verification passed:
   deterministic fallback, replay, WebSocket backlog, and heartbeat behavior
 - Artifact lifecycle: a current-runtime pregame candidate was trained,
   registered, loaded, and used for inference in an isolated database
+- Artifact storage: managed local and S3-compatible publish/read, bucket and
+  prefix scoping, byte limits, URI bounds, tamper detection, and remote-style
+  resolver caching
 
 ## Current Increment
 
@@ -90,6 +94,19 @@ Completed in this continuation:
     signing settings without changing device signing.
 25. Installed and verified the matching iOS 26.5 simulator runtime. The app
     builds, launches, loads the seeded API, and passes all 5 XCTest cases.
+26. Added a bounded content-addressed model artifact store with backward-
+    compatible verified local paths, an optional managed local root, and a
+    private S3-compatible backend.
+27. Changed promotion, rollback, and inference to use the same storage
+    boundary while preserving SHA-256 verification and off-event-loop I/O.
+28. Added S3 bucket/prefix allowlisting, standard AWS credential-chain support,
+    maximum artifact size and registry URI limits, atomic local publication,
+    and structured integrity-failure logging.
+29. Added storage metadata to model promotion records and content-addressed
+    optional calibration artifact publication.
+30. Verified desktop and mobile Playwright dashboard interaction. The first
+    run correctly reported missing managed browsers; the repository's Chrome
+    channel override passed both projects without changing application code.
 
 ## Important Product Boundaries
 
@@ -132,11 +149,11 @@ Completed in this continuation:
 5. Run the native checks with XcodeBuildMCP using the saved `CourtVision`
    project, `CourtVision` scheme, and iPhone 17 / iOS 26.5 simulator defaults.
 
-6. The next valuable increment is deployment-grade model artifact storage and
-   replay acceptance automation. Replace local-only artifact paths with a
-   private storage adapter suitable for separate Render API/worker processes,
-   then run the full web replay workflow in Playwright and add durable native
-   UI coverage for reconnect and sequence recovery.
+6. The next valuable increment is full-stack replay acceptance automation.
+   Start a seeded API, Redis-compatible replay path, and Next.js app under one
+   test harness; verify WebSocket event delivery, replay completion, reconnect
+   with `after_sequence`, missed-sequence recovery, and REST polling fallback.
+   Then add durable native UI coverage for the same recovery contract.
 
 ## Checkpoint Workflow
 
@@ -160,6 +177,8 @@ solely to increase contribution activity.
 - PostgreSQL registry execution was not run locally because neither a Docker
   daemon nor `psql` is available. PostgreSQL uses a per-model advisory
   transaction lock; SQLite migration and constraint behavior is verified.
-- The current artifact registry stores local filesystem paths. Production API
-  and worker processes must share a private mounted volume until the next
-  storage-adapter increment is complete.
+- Private S3-compatible storage is implemented and unit-tested with an injected
+  client, but no real provider credentials were available for an external
+  upload/download smoke test. Configure identical storage settings on API,
+  replay worker, and ingestion processes, with IAM restricted to the declared
+  bucket and prefix.

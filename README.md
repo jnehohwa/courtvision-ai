@@ -112,13 +112,37 @@ feature order and schema version, hashes the artifact bytes before loading,
 checks binary class ordering, and caches the verified immutable model by
 version and hash. Loading and prediction run outside the async event loop.
 Missing, tampered, incompatible, or failing artifacts fall back to the
-deterministic benchmark and report that benchmark's model version.
+deterministic benchmark and report that benchmark's model version. Integrity
+failures are emitted as structured error logs rather than being hidden as an
+ordinary cache miss.
 
 `joblib` artifacts are executable pickle payloads and must come only from the
 private training and registration workflow. The public API exposes no model
-write endpoints. The current registry stores local artifact paths, so API and
-worker processes need the same mounted artifact volume; deployments without
-that private volume intentionally remain on deterministic baselines.
+write endpoints.
+
+By default, registration retains a verified local path for development
+compatibility. Set `COURTVISION_MODEL_ARTIFACT_LOCAL_ROOT` to copy candidates
+into an immutable, content-addressed directory on a shared private volume. For
+separate Render API, replay-worker, and ingestion processes, use private
+S3-compatible object storage:
+
+```bash
+COURTVISION_MODEL_ARTIFACT_BACKEND=s3
+COURTVISION_MODEL_ARTIFACT_S3_BUCKET=courtvision-private-models
+COURTVISION_MODEL_ARTIFACT_S3_PREFIX=courtvision/models
+COURTVISION_MODEL_ARTIFACT_S3_REGION=us-east-1
+COURTVISION_MODEL_ARTIFACT_S3_ENDPOINT_URL=https://s3.example.com
+```
+
+The API uses the standard AWS credential chain, so credentials stay in secret
+environment variables rather than registry rows. Configure the same artifact
+settings on every process that reads predictions. Scope IAM permissions to the
+single private bucket and prefix, enable object versioning where available,
+and allow only the promotion process to write. The application also enforces
+the configured bucket/prefix, a 100 MiB default size limit, URI length bounds,
+and SHA-256 verification on publish and each cold load. Loaded models remain
+cached by type, version, and hash, so the remote object is not fetched on every
+prediction.
 
 Restore a retained artifact with:
 

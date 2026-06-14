@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy import delete, update
 from sqlalchemy.exc import IntegrityError
 
+from courtvision.artifact_store import ArtifactStorageConfig, ModelArtifactStore
 from courtvision.database import SessionFactory
 from courtvision.model_registry import (
     CandidateManifest,
@@ -157,6 +158,47 @@ async def test_registry_promotes_candidate_and_retains_previous_model(
         assert previous is not None and previous.status == "retired"
         assert not previous.is_active
         assert activation is not None and activation.action == "promote"
+
+
+async def test_registry_publishes_candidate_to_managed_storage(
+    database,
+    tmp_path: Path,
+):
+    artifact = tmp_path / "model.joblib"
+    artifact.write_bytes(b"managed-candidate")
+    storage_root = tmp_path / "storage"
+    store = ModelArtifactStore(
+        ArtifactStorageConfig(local_root=storage_root)
+    )
+    registry = ModelRegistry(artifact_store=store)
+
+    async with SessionFactory() as session, session.begin():
+        await registry.register_and_activate(
+            session,
+            manifest=candidate_manifest(
+                version="pregame-candidate-managed",
+                artifact=artifact,
+            ),
+            artifact_path=artifact,
+        )
+
+    artifact.unlink()
+    async with SessionFactory() as session:
+        active = await session.scalar(
+            select(ModelVersion).where(
+                ModelVersion.model_type == "pregame",
+                ModelVersion.is_active.is_(True),
+            )
+        )
+
+    assert active is not None
+    assert active.artifact_uri is not None
+    assert active.artifact_sha256 is not None
+    assert Path(active.artifact_uri).is_relative_to(storage_root)
+    assert (
+        await store.read_verified(active.artifact_uri, active.artifact_sha256)
+        == b"managed-candidate"
+    )
 
 
 async def test_registry_rejects_candidate_that_does_not_beat_active_model(
