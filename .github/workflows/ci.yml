@@ -1,0 +1,35 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --all-packages --all-extras
+      - run: uv run ruff check apps/api ml
+      - run: uv run pytest
+      - run: uv run python -m courtvision.export_openapi
+      - run: git diff --exit-code contracts/openapi.json
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @courtvision/web lint
+      - run: pnpm --filter @courtvision/web test
+      - run: pnpm --filter @courtvision/web generate:contracts:file
+      - run: git diff --exit-code apps/web/src/generated/openapi.ts
+      - run: pnpm --filter @courtvision/web build

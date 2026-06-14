@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://courtvision.local/contracts/websocket-envelope.schema.json",
+  "title": "CourtVision WebSocket Envelope",
+  "type": "object",
+  "required": [
+    "type",
+    "schema_version",
+    "game_id",
+    "sequence",
+    "occurred_at",
+    "ingested_at",
+    "source_status",
+    "model_version",
+    "payload"
+  ],
+  "properties": {
+    "type": {
+      "enum": [
+        "snapshot",
+        "play_added",
+        "play_corrected",
+        "prediction_updated",
+        "source_status",
+        "heartbeat",
+        "replay_completed"
+      ]
+    },
+    "schema_version": { "const": "1.0" },
+    "game_id": { "type": "string", "minLength": 1 },
+    "sequence": { "type": "integer", "minimum": 0 },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "ingested_at": { "type": "string", "format": "date-time" },
+    "source_status": {
+      "type": "string",
+      "enum": ["replay", "delayed", "stale", "unavailable"]
+    },
+    "model_version": { "type": ["string", "null"] },
+    "payload": { "type": "object" }
+  },
+  "additionalProperties": false
+}

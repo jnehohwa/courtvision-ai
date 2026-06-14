@@ -1,0 +1,60 @@
+databases:
+  - name: courtvision-postgres
+    databaseName: courtvision
+    user: courtvision
+    plan: free
+
+services:
+  - type: keyvalue
+    name: courtvision-redis
+    plan: free
+    ipAllowList: []
+  - type: web
+    name: courtvision-api
+    runtime: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    healthCheckPath: /health
+    preDeployCommand: alembic upgrade head
+    initialDeployHook: python -m courtvision.seed
+    envVars:
+      - key: COURTVISION_DATABASE_URL
+        fromDatabase:
+          name: courtvision-postgres
+          property: connectionString
+      - key: COURTVISION_REDIS_URL
+        fromService:
+          type: keyvalue
+          name: courtvision-redis
+          property: connectionString
+      - key: COURTVISION_INTERNAL_API_KEY
+        generateValue: true
+      - key: COURTVISION_ENVIRONMENT
+        value: production
+      - key: COURTVISION_TRUST_PROXY_HEADERS
+        value: "true"
+  - type: worker
+    name: courtvision-replay-worker
+    runtime: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerCommand: python -m courtvision.worker
+    envVars:
+      - key: COURTVISION_DATABASE_URL
+        fromDatabase:
+          name: courtvision-postgres
+          property: connectionString
+      - key: COURTVISION_REDIS_URL
+        fromService:
+          type: keyvalue
+          name: courtvision-redis
+          property: connectionString
+  - type: cron
+    name: courtvision-daily-ingestion
+    runtime: docker
+    schedule: "15 8 * * *"
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerCommand: python -m courtvision.ingest
+    envVars:
+      - key: COURTVISION_DATABASE_URL
+        fromDatabase:
+          name: courtvision-postgres
+          property: connectionString

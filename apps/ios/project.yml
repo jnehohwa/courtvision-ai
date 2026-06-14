@@ -1,0 +1,42 @@
+name: CourtVision
+options:
+  bundleIdPrefix: ai.courtvision
+  deploymentTarget:
+    iOS: "17.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+targets:
+  CourtVision:
+    type: application
+    platform: iOS
+    sources:
+      - path: CourtVision
+    info:
+      path: CourtVision/Info.plist
+      properties:
+        CFBundleDisplayName: CourtVision AI
+        UILaunchScreen: {}
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ai.courtvision.app
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        GENERATE_INFOPLIST_FILE: false
+    scheme:
+      testTargets:
+        - CourtVisionTests
+  CourtVisionTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: CourtVisionTests
+    dependencies:
+      - target: CourtVision
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ai.courtvision.tests
+        GENERATE_INFOPLIST_FILE: true

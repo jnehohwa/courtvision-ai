@@ -1,0 +1,19 @@
+{
+  "name": "courtvision-ai",
+  "private": true,
+  "packageManager": "pnpm@10.12.1",
+  "scripts": {
+    "dev:web": "pnpm --filter @courtvision/web dev",
+    "build:web": "pnpm --filter @courtvision/web build",
+    "lint:web": "pnpm --filter @courtvision/web lint",
+    "test:web": "pnpm --filter @courtvision/web test",
+    "generate:contracts": "pnpm --filter @courtvision/web generate:contracts"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "unrs-resolver"
+    ]
+  }
+}
