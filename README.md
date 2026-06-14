@@ -76,6 +76,42 @@ minimum benchmark and records those metrics beside the winning candidate.
 Replacing an existing active model should additionally compare against that
 active artifact before the registry activation flag is changed.
 
+Register and activate a trained candidate through the private command:
+
+```bash
+python -m courtvision.model_registry register \
+  ml/artifacts/pregame/metadata.json \
+  ml/artifacts/pregame/model.joblib
+```
+
+The registry verifies the artifact hash, declared baseline, active-model
+baseline, calibration limit, dataset version, and training commit in one
+database transaction. Replaced models remain registered as rollback targets.
+
+When replacing an artifact-backed active model, train against that incumbent on
+the same chronological holdout:
+
+```bash
+python -m courtvision_ml.train ml/data/pregame.parquet \
+  --output ml/artifacts/pregame-next \
+  --model-version pregame-logistic-2.0 \
+  --dataset-version pregame-2015-2025-v2 \
+  --training-commit "$(git rev-parse HEAD)" \
+  --incumbent-artifact ml/artifacts/pregame/model.joblib \
+  --incumbent-version pregame-logistic-1.0
+```
+
+The resulting manifest binds the incumbent version, hash, and same-split
+metrics, preventing invalid comparisons across different evaluation datasets.
+
+Restore a retained artifact with:
+
+```bash
+python -m courtvision.model_registry rollback \
+  pregame pregame-logistic-baseline-1.0 \
+  --reason "rollback after production validation"
+```
+
 ## Processes
 
 The API owns REST snapshots and WebSocket connections. In production, replay

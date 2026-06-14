@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+from io import BytesIO
 from pathlib import Path
 
 import joblib
@@ -30,6 +32,20 @@ FEATURES = [
     "home_rest_days",
     "away_rest_days",
 ]
+
+
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as artifact:
+        for chunk in iter(lambda: artifact.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def load_hashed_model(path: Path) -> tuple[object, str]:
+    artifact_bytes = path.read_bytes()
+    artifact_sha256 = hashlib.sha256(artifact_bytes).hexdigest()
+    return joblib.load(BytesIO(artifact_bytes)), artifact_sha256
 
 
 def chronological_split(frame: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -71,10 +87,20 @@ def train_candidates(frame: pd.DataFrame) -> dict[str, object]:
     return results
 
 
+def evaluate_model(frame: pd.DataFrame, model: object) -> MetricSet:
+    _, test = chronological_split(frame)
+    probabilities = model.predict_proba(test[FEATURES])[:, 1]
+    return binary_classification_metrics(
+        test["home_win"].to_numpy(),
+        probabilities,
+    )
+
+
 def select_promotable_candidate(
     results: dict[str, object],
     baseline_metrics: MetricSet,
     *,
+    incumbent_metrics: MetricSet | None = None,
     max_expected_calibration_error: float = 0.05,
 ) -> tuple[str, dict[str, object]]:
     eligible: dict[str, dict[str, object]] = {}
@@ -88,12 +114,24 @@ def select_promotable_candidate(
             metrics,
             baseline_metrics,
             max_expected_calibration_error=max_expected_calibration_error,
+        ) and (
+            incumbent_metrics is None
+            or passes_promotion_gate(
+                metrics,
+                incumbent_metrics,
+                max_expected_calibration_error=max_expected_calibration_error,
+            )
         ):
             eligible[name] = raw_result
 
     if not eligible:
+        comparison = (
+            "the declared and incumbent baselines"
+            if incumbent_metrics is not None
+            else "the declared baseline"
+        )
         raise RuntimeError(
-            "No candidate beat the declared baseline on Brier score and log loss "
+            f"No candidate beat {comparison} on Brier score and log loss "
             "while passing the calibration gate"
         )
 
@@ -110,22 +148,45 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("dataset", type=Path)
     parser.add_argument("--output", type=Path, default=Path("ml/artifacts/pregame"))
+    parser.add_argument("--model-version", required=True)
     parser.add_argument("--dataset-version", required=True)
     parser.add_argument("--training-commit", default="uncommitted")
+    parser.add_argument("--incumbent-artifact", type=Path)
+    parser.add_argument("--incumbent-version")
     args = parser.parse_args()
+    if bool(args.incumbent_artifact) != bool(args.incumbent_version):
+        parser.error(
+            "--incumbent-artifact and --incumbent-version must be provided together"
+        )
 
     frame = pd.read_parquet(args.dataset)
     results = train_candidates(frame)
     baseline_metrics = declared_baseline_metrics(frame)
+    incumbent = None
+    incumbent_metrics = None
+    if args.incumbent_artifact:
+        incumbent_model, incumbent_sha256 = load_hashed_model(
+            args.incumbent_artifact
+        )
+        incumbent_metrics = evaluate_model(frame, incumbent_model)
+        incumbent = {
+            "model_version": args.incumbent_version,
+            "artifact_sha256": incumbent_sha256,
+            "metrics": incumbent_metrics,
+        }
     winner_name, winner = select_promotable_candidate(
         results,
         baseline_metrics,
+        incumbent_metrics=incumbent_metrics,
     )
     args.output.mkdir(parents=True, exist_ok=True)
-    joblib.dump(winner["model"], args.output / "model.joblib")
+    artifact_path = args.output / "model.joblib"
+    joblib.dump(winner["model"], artifact_path)
     (args.output / "metadata.json").write_text(
         json.dumps(
             {
+                "model_type": "pregame",
+                "model_version": args.model_version,
                 "winner": winner_name,
                 "features": FEATURES,
                 "metrics": winner["metrics"],
@@ -138,6 +199,15 @@ def main() -> None:
                     "path": str(args.dataset),
                     "version": args.dataset_version,
                 },
+                "artifact": {
+                    "filename": artifact_path.name,
+                    "sha256": sha256(artifact_path),
+                },
+                "calibration": {
+                    "method": "sigmoid",
+                    "artifact": "embedded",
+                },
+                "incumbent": incumbent,
                 "feature_schema_version": "pregame-v1",
                 "training_commit": args.training_commit,
                 "activation_status": "candidate",

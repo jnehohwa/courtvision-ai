@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select, text, update
+from sqlalchemy import select, text
 
 from courtvision.database import SessionFactory
 from courtvision.fixtures import (
@@ -19,6 +19,7 @@ from courtvision.models import (
     FeatureSnapshot,
     Game,
     IngestionRun,
+    ModelActivation,
     ModelVersion,
     PlayByPlayEvent,
     Player,
@@ -119,11 +120,13 @@ async def seed_database() -> None:
                 ],
             ),
         ]
+        now = datetime.now(UTC)
         for model_type, version, features in model_specs:
-            await session.execute(
-                update(ModelVersion)
-                .where(ModelVersion.model_type == model_type)
-                .values(is_active=False)
+            active = await session.scalar(
+                select(ModelVersion).where(
+                    ModelVersion.model_type == model_type,
+                    ModelVersion.is_active.is_(True),
+                )
             )
             existing = await session.scalar(
                 select(ModelVersion).where(
@@ -132,19 +135,42 @@ async def seed_database() -> None:
                 )
             )
             if existing is None:
-                session.add(
-                    ModelVersion(
-                        model_type=model_type,
-                        version=version,
-                        feature_schema={"features": features, "schema_version": "1.0"},
-                        metrics={
-                            "status": "fixture_baseline",
-                            "expected_calibration_error": 0.04,
-                        },
-                        dataset_version="synthetic-fixture-1.0",
-                        is_active=True,
-                    )
+                is_initial_active = active is None
+                baseline_model = ModelVersion(
+                    model_type=model_type,
+                    version=version,
+                    feature_schema={"features": features, "schema_version": "1.0"},
+                    metrics={
+                        "status": "fixture_baseline",
+                        "brier_score": 0.25,
+                        "log_loss": 0.69,
+                        "expected_calibration_error": 0.04,
+                    },
+                    dataset_version="synthetic-fixture-1.0",
+                    status="active" if is_initial_active else "retired",
+                    is_active=is_initial_active,
+                    registered_at=now,
+                    activated_at=now if is_initial_active else None,
+                    promotion_metadata={"source": "synthetic-fixture"},
                 )
+                session.add(baseline_model)
+                if is_initial_active:
+                    await session.flush()
+                    session.add(
+                        ModelActivation(
+                            model_type=model_type,
+                            model_version=version,
+                            previous_model_version=None,
+                            action="seed",
+                            reason="initial synthetic fixture baseline",
+                            activated_at=now,
+                            metrics_snapshot={
+                                "brier_score": 0.25,
+                                "log_loss": 0.69,
+                                "expected_calibration_error": 0.04,
+                            },
+                        )
+                    )
             else:
                 existing.feature_schema = {
                     "features": features,
@@ -152,12 +178,31 @@ async def seed_database() -> None:
                 }
                 existing.metrics = {
                     "status": "fixture_baseline",
+                    "brier_score": 0.25,
+                    "log_loss": 0.69,
                     "expected_calibration_error": 0.04,
                 }
                 existing.dataset_version = "synthetic-fixture-1.0"
-                existing.is_active = True
+                if active is None:
+                    existing.status = "active"
+                    existing.is_active = True
+                    existing.activated_at = existing.activated_at or now
+                    session.add(
+                        ModelActivation(
+                            model_type=model_type,
+                            model_version=version,
+                            previous_model_version=None,
+                            action="seed",
+                            reason="restored synthetic fixture baseline",
+                            activated_at=now,
+                            metrics_snapshot={
+                                "brier_score": 0.25,
+                                "log_loss": 0.69,
+                                "expected_calibration_error": 0.04,
+                            },
+                        )
+                    )
 
-        now = datetime.now(UTC)
         statistics_by_game = {
             (row["game_id"], row["team_id"]): row for row in team_statistics
         }

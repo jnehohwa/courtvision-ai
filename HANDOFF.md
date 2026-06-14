@@ -21,14 +21,17 @@ CourtVision AI has a verified replay-first vertical slice:
 
 The latest complete verification in this continuation passed:
 
-- Backend: 30 tests
+- Backend: 39 tests
 - Ruff: clean
 - Web: ESLint, TypeScript, Vitest, Next.js production build
 - Playwright: desktop and mobile before the latest metadata-only UI change
 - Swift: app and XCTest source typechecking with the Xcode XCTest overlay
-- ML: 7 tests plus a successful artifact-level promotion smoke test
-- Database: blank SQLite migration through Alembic `0004 (head)`
+- ML: 10 tests plus artifact-bound trainer and incumbent-gate smoke tests
+- Database: blank SQLite and `0004` upgrade paths through Alembic `0005 (head)`
+- Registry: private CLI promotion, activation history, reseed preservation,
+  artifact hashing, same-split incumbent comparison, and rollback tests
 - Runtime: deterministic replay and WebSocket heartbeat
+- GitHub Actions: backend and web jobs green for commits `f4b7993` and `5050e6d`
 
 The full Xcode simulator build remains blocked by the local machine having iOS
 26.0 and 26.1 runtimes while Xcode 26.5 requires a matching simulator runtime.
@@ -56,6 +59,16 @@ Completed in this continuation:
     snapshot and changed internal-key validation to constant-time comparison.
 11. Completed a read-only Claude/Gemini review and verified each finding before
     editing. Incorrect findings were rejected rather than applied blindly.
+12. Published the public repository and established the verify, handoff,
+    commit, push, and upstream-sync checkpoint workflow.
+13. Added Alembic revision `0005` and a transactional private model registry.
+14. Enforced one active model per type, status consistency, artifact SHA-256
+    binding, activation-history referential integrity, and retained rollback
+    targets.
+15. Added incumbent evaluation on the same chronological holdout and required
+    version/hash identity with the active registry model.
+16. Changed fixture seeding to preserve promoted models and record initial
+    baseline activation instead of silently restoring the fixture baseline.
 
 The in-app browser rejected the latest localhost reload under its URL policy
 and explicitly prohibited switching browser surfaces for the same action.
@@ -71,7 +84,8 @@ policy condition changes. Type checking and production builds are green.
 - The shipped API uses deterministic benchmarks; `ml/` contains offline
   candidate training and promotion logic.
 - The offline prevalence baseline is the minimum promotion threshold. Replacing
-  a registered active model must also beat that active artifact.
+  an artifact-backed active model must also beat that exact version on the same
+  chronological holdout.
 
 ## Resume Instructions
 
@@ -105,10 +119,10 @@ policy condition changes. Type checking and production builds are green.
    PYTHONPATH=ml /opt/anaconda3/bin/python -m pytest ml/tests -q
    ```
 
-6. The next valuable increment is active-model registry integration: load an
-   existing active artifact as an additional promotion baseline, register the
-   new candidate transactionally, and retain the previous active version for
-   rollback.
+6. The next valuable increment is inference integration: load the active
+   registered artifact after verifying its SHA-256 and feature schema, expose
+   its actual version in predictions, and gracefully retain the deterministic
+   baseline when the artifact is missing or invalid.
 
 ## Checkpoint Workflow
 
@@ -130,4 +144,7 @@ solely to increase contribution activity.
 - The Anaconda pytest stack warns that `asyncio_mode` is unknown when running
   the synchronous ML-only test directory.
 - Public GitHub publication is complete. Commit `f4b7993` is the initial
-  portfolio MVP on `origin/main`.
+  portfolio MVP and `5050e6d` records the checkpoint workflow.
+- PostgreSQL registry execution was not run locally because neither a Docker
+  daemon nor `psql` is available. PostgreSQL uses a per-model advisory
+  transaction lock; SQLite migration and constraint behavior is verified.

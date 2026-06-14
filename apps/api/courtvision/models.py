@@ -1,19 +1,22 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import (
     JSON,
     Boolean,
+    CheckConstraint,
     DateTime,
     Float,
     ForeignKey,
+    ForeignKeyConstraint,
     Integer,
     Index,
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -173,17 +176,66 @@ class FeatureSnapshot(Base):
 
 class ModelVersion(Base):
     __tablename__ = "model_versions"
-    __table_args__ = (UniqueConstraint("model_type", "version"),)
+    __table_args__ = (
+        UniqueConstraint("model_type", "version"),
+        Index(
+            "uq_model_versions_active_type",
+            "model_type",
+            unique=True,
+            postgresql_where=text("is_active"),
+            sqlite_where=text("is_active"),
+        ),
+        CheckConstraint(
+            "is_active = (status = 'active')",
+            name="ck_model_versions_active_status",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     model_type: Mapped[str] = mapped_column(String(40), index=True)
     version: Mapped[str] = mapped_column(String(40))
     artifact_uri: Mapped[str | None] = mapped_column(String(255))
+    artifact_sha256: Mapped[str | None] = mapped_column(String(64))
+    calibration_uri: Mapped[str | None] = mapped_column(String(255))
     feature_schema: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     metrics: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     dataset_version: Mapped[str] = mapped_column(String(100))
     training_commit: Mapped[str | None] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(24), default="candidate")
     is_active: Mapped[bool] = mapped_column(Boolean, default=False)
+    registered_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+    )
+    activated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    deactivated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    promotion_metadata: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+
+
+class ModelActivation(Base):
+    __tablename__ = "model_activations"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["model_type", "model_version"],
+            ["model_versions.model_type", "model_versions.version"],
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["model_type", "previous_model_version"],
+            ["model_versions.model_type", "model_versions.version"],
+            ondelete="RESTRICT",
+        ),
+        Index("ix_model_activations_type_activated", "model_type", "activated_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    model_type: Mapped[str] = mapped_column(String(40), index=True)
+    model_version: Mapped[str] = mapped_column(String(40))
+    previous_model_version: Mapped[str | None] = mapped_column(String(40))
+    action: Mapped[str] = mapped_column(String(24))
+    reason: Mapped[str] = mapped_column(String(255))
+    activated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    metrics_snapshot: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
 
 
 class IngestionRun(Base):

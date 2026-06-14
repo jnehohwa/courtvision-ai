@@ -12,7 +12,9 @@ from courtvision_ml.evaluation import (
 from courtvision_ml.train import (
     chronological_split,
     declared_baseline_metrics,
+    load_hashed_model,
     select_promotable_candidate,
+    sha256,
 )
 
 
@@ -113,6 +115,36 @@ def test_select_promotable_candidate_rejects_calibrated_non_improvement():
         select_promotable_candidate(results, baseline)
 
 
+def test_select_promotable_candidate_must_beat_incumbent():
+    declared_baseline = {
+        "brier_score": 0.25,
+        "log_loss": 0.69,
+        "expected_calibration_error": 0.1,
+    }
+    incumbent = {
+        "brier_score": 0.20,
+        "log_loss": 0.60,
+        "expected_calibration_error": 0.03,
+    }
+    results = {
+        "candidate": {
+            "model": object(),
+            "metrics": {
+                "brier_score": 0.21,
+                "log_loss": 0.61,
+                "expected_calibration_error": 0.02,
+            },
+        },
+    }
+
+    with pytest.raises(RuntimeError, match="incumbent"):
+        select_promotable_candidate(
+            results,
+            declared_baseline,
+            incumbent_metrics=incumbent,
+        )
+
+
 def test_chronological_split_holds_out_last_two_seasons():
     frame = pd.DataFrame(
         {
@@ -142,3 +174,26 @@ def test_declared_baseline_uses_training_prevalence_only():
     )
 
     assert metrics == expected
+
+
+def test_artifact_hash_changes_with_artifact_bytes(tmp_path):
+    artifact = tmp_path / "model.joblib"
+    artifact.write_bytes(b"candidate-one")
+    first_hash = sha256(artifact)
+
+    artifact.write_bytes(b"candidate-two")
+
+    assert first_hash != sha256(artifact)
+
+
+def test_load_hashed_model_hashes_the_loaded_bytes(tmp_path):
+    import joblib
+
+    artifact = tmp_path / "model.joblib"
+    expected_model = {"coefficient": 0.25}
+    joblib.dump(expected_model, artifact)
+
+    loaded_model, artifact_hash = load_hashed_model(artifact)
+
+    assert loaded_model == expected_model
+    assert artifact_hash == sha256(artifact)
