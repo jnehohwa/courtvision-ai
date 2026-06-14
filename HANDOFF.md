@@ -6,6 +6,7 @@ Last updated: 2026-06-14
 
 CourtVision AI has a verified replay-first vertical slice:
 
+- Public repository: `https://github.com/jnehohwa/courtvision-ai`
 - FastAPI REST and WebSocket API
 - SQLAlchemy models and Alembic migrations
 - Redis-compatible replay queue and pub/sub with an in-process local fallback
@@ -77,6 +78,11 @@ policy condition changes. Type checking and production builds are green.
 1. Read this file and `README.md`.
 2. Run `git status --short --branch` and confirm the current branch is synced
    with GitHub before editing.
+   GitHub CLI commands on this machine require:
+
+   ```bash
+   export GH_CONFIG_DIR="$HOME/Library/Application Support/gh"
+   ```
 3. Run backend tests with:
 
    ```bash
@@ -123,5 +129,5 @@ solely to increase contribution activity.
   `httpx` bridge; it does not fail tests.
 - The Anaconda pytest stack warns that `asyncio_mode` is unknown when running
   the synchronous ML-only test directory.
-- The initial public GitHub publication is the next required action before
-  active-model registry work resumes.
+- Public GitHub publication is complete. Commit `f4b7993` is the initial
+  portfolio MVP on `origin/main`.

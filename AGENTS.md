@@ -29,8 +29,18 @@ Before ending a substantial work session or approaching the context limit:
 4. Review `git status` and the staged diff for secrets, generated files, and
    unrelated user changes.
 5. Commit the completed increment with a descriptive message.
-6. Push the current branch to GitHub.
+6. Push the current branch to
+   `https://github.com/jnehohwa/courtvision-ai`.
 7. Confirm the local branch is synchronized with its upstream before stopping.
 
 Do not manufacture empty commits purely to inflate activity. Each commit should
 represent a coherent, verified engineering increment.
+
+On this machine, GitHub CLI commands must use:
+
+```bash
+export GH_CONFIG_DIR="$HOME/Library/Application Support/gh"
+```
+
+The default `~/.config` directory is owned by `root`, so `gh` cannot persist
+configuration there.
