@@ -85,8 +85,9 @@ python -m courtvision.model_registry register \
 ```
 
 The registry verifies the artifact hash, declared baseline, active-model
-baseline, calibration limit, dataset version, and training commit in one
-database transaction. Replaced models remain registered as rollback targets.
+baseline, calibration limit, dataset version, training commit, and Python/ML
+runtime versions in one database transaction. Replaced models remain
+registered as rollback targets.
 
 When replacing an artifact-backed active model, train against that incumbent on
 the same chronological holdout:
@@ -103,6 +104,21 @@ python -m courtvision_ml.train ml/data/pregame.parquet \
 
 The resulting manifest binds the incumbent version, hash, and same-split
 metrics, preventing invalid comparisons across different evaluation datasets.
+It also records the Python, joblib, NumPy, pandas, and scikit-learn versions
+required to deserialize the artifact safely.
+
+At inference time, the API queries the active registry row, validates the exact
+feature order and schema version, hashes the artifact bytes before loading,
+checks binary class ordering, and caches the verified immutable model by
+version and hash. Loading and prediction run outside the async event loop.
+Missing, tampered, incompatible, or failing artifacts fall back to the
+deterministic benchmark and report that benchmark's model version.
+
+`joblib` artifacts are executable pickle payloads and must come only from the
+private training and registration workflow. The public API exposes no model
+write endpoints. The current registry stores local artifact paths, so API and
+worker processes need the same mounted artifact volume; deployments without
+that private volume intentionally remain on deterministic baselines.
 
 Restore a retained artifact with:
 

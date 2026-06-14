@@ -1,9 +1,17 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from enum import StrEnum
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator
+
+
+def as_utc(value: datetime) -> datetime:
+    return value.astimezone(UTC) if value.tzinfo else value.replace(tzinfo=UTC)
+
+
+UtcDateTime = Annotated[datetime, AfterValidator(as_utc)]
 
 
 class SourceStatus(StrEnum):
@@ -25,14 +33,14 @@ class PredictionResponse(BaseModel):
     home_probability: float = Field(ge=0, le=1)
     away_probability: float = Field(ge=0, le=1)
     model_version: str
-    predicted_at: datetime
-    feature_timestamp: datetime
+    predicted_at: UtcDateTime
+    feature_timestamp: UtcDateTime
     confidence: str
 
 
 class GameResponse(BaseModel):
     id: str
-    scheduled_at: datetime
+    scheduled_at: UtcDateTime
     home_team: TeamResponse
     away_team: TeamResponse
     home_score: int
@@ -41,7 +49,7 @@ class GameResponse(BaseModel):
     clock_seconds: int
     status: str
     source_status: SourceStatus
-    last_ingested_at: datetime | None
+    last_ingested_at: UtcDateTime | None
     prediction: PredictionResponse | None = None
 
 
@@ -72,7 +80,7 @@ class LiveSnapshotResponse(BaseModel):
     is_stale: bool
     freshness_seconds: int | None
     live_model_version: str
-    snapshot_generated_at: datetime
+    snapshot_generated_at: UtcDateTime
 
 
 class ShotAttemptRequest(BaseModel):
@@ -140,8 +148,8 @@ class WebSocketEnvelope(BaseModel):
     schema_version: str = "1.0"
     game_id: str
     sequence: int = Field(ge=0)
-    occurred_at: datetime
-    ingested_at: datetime
+    occurred_at: UtcDateTime
+    ingested_at: UtcDateTime
     source_status: SourceStatus
     model_version: str | None
     payload: dict[str, object]
@@ -149,22 +157,22 @@ class WebSocketEnvelope(BaseModel):
 
 class SourceHealthResponse(BaseModel):
     status: str
-    last_attempt_at: datetime | None
-    last_success_at: datetime | None
-    last_event_at: datetime | None
+    last_attempt_at: UtcDateTime | None
+    last_success_at: UtcDateTime | None
+    last_event_at: UtcDateTime | None
     last_error: str | None
     consecutive_failures: int
     total_polls: int
     total_events: int
     current_poll_interval_seconds: float | None
-    updated_at: datetime
+    updated_at: UtcDateTime
 
 
 class HealthResponse(BaseModel):
     status: str
     database: str
     redis: str
-    latest_ingestion_at: datetime | None
+    latest_ingestion_at: UtcDateTime | None
     data_lag_seconds: int | None
     delayed_live_enabled: bool
     sources: dict[str, SourceHealthResponse]

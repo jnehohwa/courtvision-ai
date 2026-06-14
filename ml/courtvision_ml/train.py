@@ -3,12 +3,14 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import platform
 from io import BytesIO
 from pathlib import Path
 
 import joblib
 import numpy as np
 import pandas as pd
+import sklearn
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
@@ -206,6 +208,13 @@ def main() -> None:
                 "calibration": {
                     "method": "sigmoid",
                     "artifact": "embedded",
+                },
+                "runtime": {
+                    "python": ".".join(platform.python_version_tuple()[:2]),
+                    "joblib": joblib.__version__,
+                    "numpy": np.__version__,
+                    "pandas": pd.__version__,
+                    "scikit_learn": sklearn.__version__,
                 },
                 "incumbent": incumbent,
                 "feature_schema_version": "pregame-v1",

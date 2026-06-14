@@ -15,6 +15,11 @@ from courtvision.fixtures import (
     fixture_shots,
     fixture_team_game_statistics,
 )
+from courtvision.model_contracts import (
+    LIVE_WIN_CONTRACT,
+    PREGAME_CONTRACT,
+    SHOT_QUALITY_CONTRACT,
+)
 from courtvision.models import (
     FeatureSnapshot,
     Game,
@@ -87,41 +92,15 @@ async def seed_database() -> None:
             if existing is None:
                 session.add(Shot(**values))
 
-        model_specs = [
-            (
-                "pregame",
-                "pregame-logistic-baseline-1.0",
-                [
-                    "home_offensive_rating",
-                    "away_offensive_rating",
-                    "home_defensive_rating",
-                    "away_defensive_rating",
-                    "home_pace",
-                    "away_pace",
-                    "home_rest_days",
-                    "away_rest_days",
-                ],
-            ),
-            (
-                "shot_quality",
-                "shot-quality-baseline-1.0",
-                ["x", "y", "shot_value", "period", "game_clock_seconds", "score_differential"],
-            ),
-            (
-                "live_win",
-                "live-win-logistic-baseline-1.0",
-                [
-                    "score_differential",
-                    "time_remaining_seconds",
-                    "possession_is_home",
-                    "home_fouls",
-                    "away_fouls",
-                    "pregame_home_probability",
-                ],
-            ),
-        ]
+        model_specs = (
+            PREGAME_CONTRACT,
+            SHOT_QUALITY_CONTRACT,
+            LIVE_WIN_CONTRACT,
+        )
         now = datetime.now(UTC)
-        for model_type, version, features in model_specs:
+        for contract in model_specs:
+            model_type = contract.model_type
+            version = contract.baseline_version
             active = await session.scalar(
                 select(ModelVersion).where(
                     ModelVersion.model_type == model_type,
@@ -139,7 +118,10 @@ async def seed_database() -> None:
                 baseline_model = ModelVersion(
                     model_type=model_type,
                     version=version,
-                    feature_schema={"features": features, "schema_version": "1.0"},
+                    feature_schema={
+                        "features": list(contract.features),
+                        "schema_version": contract.schema_version,
+                    },
                     metrics={
                         "status": "fixture_baseline",
                         "brier_score": 0.25,
@@ -173,8 +155,8 @@ async def seed_database() -> None:
                     )
             else:
                 existing.feature_schema = {
-                    "features": features,
-                    "schema_version": "1.0",
+                    "features": list(contract.features),
+                    "schema_version": contract.schema_version,
                 }
                 existing.metrics = {
                     "status": "fixture_baseline",
@@ -219,7 +201,7 @@ async def seed_database() -> None:
                     FeatureSnapshot.game_id == game_id,
                     FeatureSnapshot.model_type == "pregame",
                     FeatureSnapshot.feature_timestamp == feature_timestamp,
-                    FeatureSnapshot.schema_version == "1.0",
+                    FeatureSnapshot.schema_version == PREGAME_CONTRACT.schema_version,
                 )
             )
             feature_values = {
@@ -239,7 +221,7 @@ async def seed_database() -> None:
                         model_type="pregame",
                         feature_timestamp=feature_timestamp,
                         prediction_timestamp=prediction_timestamp,
-                        schema_version="1.0",
+                        schema_version=PREGAME_CONTRACT.schema_version,
                         dataset_version="synthetic-fixture-1.0",
                         features=feature_values,
                         provenance={

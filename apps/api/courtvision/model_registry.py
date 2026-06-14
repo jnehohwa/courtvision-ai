@@ -14,6 +14,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from courtvision.database import SessionFactory
+from courtvision.model_runtime import current_model_runtime
 from courtvision.models import ModelActivation, ModelVersion
 
 
@@ -61,6 +62,16 @@ class IncumbentManifest(BaseModel):
     metrics: EvaluationMetrics
 
 
+class RuntimeManifest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    python: str = Field(min_length=3)
+    joblib: str = Field(min_length=1)
+    numpy: str = Field(min_length=1)
+    pandas: str = Field(min_length=1)
+    scikit_learn: str = Field(min_length=1)
+
+
 class CandidateManifest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -74,6 +85,7 @@ class CandidateManifest(BaseModel):
     dataset: DatasetManifest
     artifact: ArtifactManifest
     calibration: CalibrationManifest
+    runtime: RuntimeManifest
     incumbent: IncumbentManifest | None = None
     feature_schema_version: str = Field(min_length=1, max_length=20)
     training_commit: str = Field(min_length=1, max_length=64)
@@ -108,6 +120,10 @@ class ModelRegistry:
         if manifest.training_commit == "uncommitted":
             raise PromotionRejectedError(
                 "An uncommitted training artifact cannot be activated"
+            )
+        if manifest.runtime.model_dump() != current_model_runtime():
+            raise PromotionRejectedError(
+                "Artifact runtime versions do not match the registry environment"
             )
         if not artifact_path.is_file():
             raise FileNotFoundError(f"Model artifact not found: {artifact_path}")
@@ -152,7 +168,7 @@ class ModelRegistry:
                     baseline_name=f"active baseline {active.version}",
                 )
 
-        artifact_sha256 = self._sha256(artifact_path)
+        artifact_sha256 = await asyncio.to_thread(self._sha256, artifact_path)
         if artifact_path.name != manifest.artifact.filename:
             raise PromotionRejectedError(
                 "Artifact filename does not match the training manifest"
@@ -205,6 +221,7 @@ class ModelRegistry:
             "split": manifest.split,
             "declared_baseline": manifest.baseline.model_dump(),
             "calibration": manifest.calibration.model_dump(),
+            "runtime": manifest.runtime.model_dump(),
             "incumbent": (
                 manifest.incumbent.model_dump() if manifest.incumbent else None
             ),
@@ -265,12 +282,14 @@ class ModelRegistry:
             raise ValueError(f"Model version {model_type}/{version} is not registered")
         if not target.artifact_uri or not target.artifact_sha256:
             raise ValueError("Rollback target does not have a registered artifact")
+        if target.promotion_metadata.get("runtime") != current_model_runtime():
+            raise ValueError("Rollback artifact runtime is incompatible")
         target_path = Path(target.artifact_uri)
         if not target_path.is_file():
             raise FileNotFoundError(
                 f"Rollback artifact is unavailable: {target.artifact_uri}"
             )
-        if self._sha256(target_path) != target.artifact_sha256:
+        if await asyncio.to_thread(self._sha256, target_path) != target.artifact_sha256:
             raise ValueError("Rollback artifact hash does not match the registry")
         if active is not None and active.id == target.id:
             return RegistryResult(
@@ -387,6 +406,10 @@ model_registry = ModelRegistry()
 
 def load_manifest(path: Path) -> CandidateManifest:
     return CandidateManifest.model_validate_json(path.read_text(encoding="utf-8"))
+
+
+def runtime_manifest() -> RuntimeManifest:
+    return RuntimeManifest.model_validate(current_model_runtime())
 
 
 async def register_command(args: argparse.Namespace) -> RegistryResult:

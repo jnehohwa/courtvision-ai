@@ -5,6 +5,7 @@ options:
     iOS: "17.0"
 settings:
   base:
+    "CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]": false
     SWIFT_VERSION: "6.0"
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Automatic
@@ -38,5 +39,6 @@ targets:
       - target: CourtVision
     settings:
       base:
+        CODE_SIGNING_ALLOWED: false
         PRODUCT_BUNDLE_IDENTIFIER: ai.courtvision.tests
         GENERATE_INFOPLIST_FILE: true

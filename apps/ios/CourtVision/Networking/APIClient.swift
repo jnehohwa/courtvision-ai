@@ -34,18 +34,45 @@ struct APIClient: Sendable {
     static func makeDecoder() -> JSONDecoder {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
-        decoder.dateDecodingStrategy = .iso8601
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let value = try container.decode(String.self)
+            if let date = Self.parseISO8601(value) {
+                return date
+            }
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Invalid ISO-8601 timestamp: \(value)"
+            )
+        }
         return decoder
     }
 
+    private static func parseISO8601(_ value: String) -> Date? {
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractional.date(from: value) {
+            return date
+        }
+
+        let wholeSecond = ISO8601DateFormatter()
+        wholeSecond.formatOptions = [.withInternetDateTime]
+        return wholeSecond.date(from: value)
+    }
+
     func games(on date: Date = .now) async throws -> [Game] {
+        let day = Self.apiDateString(from: date)
+        let response: GamesResponse = try await get("/api/v1/games?date=\(day)")
+        return response.games
+    }
+
+    static func apiDateString(from date: Date) -> String {
         let formatter = DateFormatter()
         formatter.calendar = Calendar(identifier: .gregorian)
         formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
         formatter.dateFormat = "yyyy-MM-dd"
-        let day = formatter.string(from: date)
-        let response: GamesResponse = try await get("/api/v1/games?date=\(day)")
-        return response.games
+        return formatter.string(from: date)
     }
 
     func liveSnapshot(gameID: String) async throws -> LiveSnapshot {

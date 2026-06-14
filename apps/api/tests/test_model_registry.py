@@ -14,6 +14,7 @@ from courtvision.model_registry import (
     CandidateManifest,
     ModelRegistry,
     PromotionRejectedError,
+    runtime_manifest,
 )
 from courtvision.models import ModelActivation, ModelVersion
 
@@ -92,6 +93,7 @@ def candidate_manifest(
                 "method": "sigmoid",
                 "artifact": "embedded",
             },
+            "runtime": runtime_manifest().model_dump(),
             "incumbent": (
                 {
                     "model_version": incumbent_version,
@@ -259,6 +261,25 @@ async def test_registry_rejects_artifact_that_changed_after_training(
                 )
 
 
+async def test_registry_rejects_incompatible_runtime(database, tmp_path: Path):
+    artifact = tmp_path / "incompatible-runtime.joblib"
+    artifact.write_bytes(b"candidate")
+    manifest_payload = candidate_manifest(
+        version="pregame-candidate-incompatible-runtime",
+        artifact=artifact,
+    ).model_dump()
+    manifest_payload["runtime"]["scikit_learn"] = "0.0"
+
+    async with SessionFactory() as session:
+        with pytest.raises(PromotionRejectedError, match="runtime versions"):
+            async with session.begin():
+                await ModelRegistry().register_and_activate(
+                    session,
+                    manifest=CandidateManifest.model_validate(manifest_payload),
+                    artifact_path=artifact,
+                )
+
+
 async def test_registry_rolls_back_to_retained_model(database, tmp_path: Path):
     candidate_artifact = tmp_path / "candidate.joblib"
     candidate_artifact.write_bytes(b"candidate")
@@ -284,6 +305,9 @@ async def test_registry_rolls_back_to_retained_model(database, tmp_path: Path):
         assert baseline is not None
         baseline.artifact_uri = str(baseline_artifact)
         baseline.artifact_sha256 = registry._sha256(baseline_artifact)
+        baseline.promotion_metadata = {
+            "runtime": runtime_manifest().model_dump(),
+        }
 
         result = await registry.rollback(
             session,
@@ -310,6 +334,50 @@ async def test_registry_rolls_back_to_retained_model(database, tmp_path: Path):
         assert active.version == "pregame-logistic-baseline-1.0"
         assert activation is not None
         assert activation.previous_model_version == "pregame-candidate-2.0"
+
+
+async def test_registry_rejects_rollback_to_incompatible_runtime(
+    database,
+    tmp_path: Path,
+):
+    candidate_artifact = tmp_path / "candidate.joblib"
+    candidate_artifact.write_bytes(b"candidate")
+    baseline_artifact = tmp_path / "baseline.joblib"
+    baseline_artifact.write_bytes(b"baseline")
+    registry = ModelRegistry()
+
+    async with SessionFactory() as session:
+        with pytest.raises(ValueError, match="runtime is incompatible"):
+            async with session.begin():
+                await registry.register_and_activate(
+                    session,
+                    manifest=candidate_manifest(
+                        version="pregame-candidate-2.0",
+                        artifact=candidate_artifact,
+                    ),
+                    artifact_path=candidate_artifact,
+                )
+                baseline = await session.scalar(
+                    select(ModelVersion).where(
+                        ModelVersion.model_type == "pregame",
+                        ModelVersion.version == "pregame-logistic-baseline-1.0",
+                    )
+                )
+                assert baseline is not None
+                baseline.artifact_uri = str(baseline_artifact)
+                baseline.artifact_sha256 = registry._sha256(baseline_artifact)
+                baseline.promotion_metadata = {
+                    "runtime": {
+                        **runtime_manifest().model_dump(),
+                        "scikit_learn": "0.0",
+                    }
+                }
+                await registry.rollback(
+                    session,
+                    model_type="pregame",
+                    version=baseline.version,
+                    reason="incompatible rollback",
+                )
 
 
 async def test_seed_does_not_replace_promoted_active_model(database):

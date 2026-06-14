@@ -6,7 +6,13 @@ from sqlalchemy import Select, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from courtvision.models import Game, PlayByPlayEvent, Prediction, SourceHealthRecord
+from courtvision.models import (
+    FeatureSnapshot,
+    Game,
+    PlayByPlayEvent,
+    Prediction,
+    SourceHealthRecord,
+)
 from courtvision.sources import SourceHealth
 
 
@@ -40,6 +46,26 @@ async def latest_prediction(
         select(Prediction)
         .where(Prediction.game_id == game_id, Prediction.kind == kind)
         .order_by(desc(Prediction.predicted_at), desc(Prediction.id))
+        .limit(1)
+    )
+    return await session.scalar(statement)
+
+
+async def latest_feature_snapshot(
+    session: AsyncSession,
+    game_id: str,
+    model_type: str,
+    *,
+    before: datetime,
+) -> FeatureSnapshot | None:
+    statement = (
+        select(FeatureSnapshot)
+        .where(
+            FeatureSnapshot.game_id == game_id,
+            FeatureSnapshot.model_type == model_type,
+            FeatureSnapshot.feature_timestamp <= before,
+        )
+        .order_by(desc(FeatureSnapshot.feature_timestamp), desc(FeatureSnapshot.id))
         .limit(1)
     )
     return await session.scalar(statement)

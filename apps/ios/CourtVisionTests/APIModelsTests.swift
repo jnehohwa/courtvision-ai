@@ -1,6 +1,7 @@
 import XCTest
 @testable import CourtVision
 
+@MainActor
 final class APIModelsTests: XCTestCase {
     func testEnvelopeDecodesSnakeCasePayload() throws {
         let json = """
@@ -45,6 +46,43 @@ final class APIModelsTests: XCTestCase {
 
     func testClockFormatting() {
         XCTAssertEqual(ScoreboardView.clock(138), "02:18")
+    }
+
+    func testAPIDateUsesUTCDayAtLocalMidnightBoundary() throws {
+        let date = try XCTUnwrap(
+            ISO8601DateFormatter().date(from: "2026-06-14T23:17:00Z")
+        )
+
+        XCTAssertEqual(APIClient.apiDateString(from: date), "2026-06-14")
+    }
+
+    func testDecoderAcceptsFractionalUTCDate() throws {
+        let json = """
+        {
+          "date": "2026-06-14",
+          "games": [{
+            "id": "game-1",
+            "scheduled_at": "2026-06-14T18:30:00Z",
+            "home_team": {"id": "bos", "name": "Boston", "abbreviation": "BOS"},
+            "away_team": {"id": "nyk", "name": "New York", "abbreviation": "NYK"},
+            "home_score": 0,
+            "away_score": 0,
+            "period": 0,
+            "clock_seconds": 2880,
+            "status": "scheduled",
+            "source_status": "replay",
+            "last_ingested_at": "2026-06-14T18:29:52.123456Z",
+            "prediction": null
+          }]
+        }
+        """
+
+        let response = try APIClient.makeDecoder().decode(
+            GamesResponse.self,
+            from: Data(json.utf8)
+        )
+
+        XCTAssertNotNil(response.games.first?.lastIngestedAt)
     }
 
     func testLiveSnapshotDecodesModelAndFreshnessMetadata() throws {

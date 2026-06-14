@@ -11,9 +11,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from courtvision.broadcast import connection_manager, event_bus
 from courtvision.config import settings
 from courtvision.database import get_session
+from courtvision.inference import active_model_resolver
 from courtvision.ml import prediction_service
 from courtvision.models import IngestionRun
-from courtvision.presenters import event_envelope, game_response, status_envelope, timeline_point
+from courtvision.prediction_runtime import resolve_pregame_estimate
+from courtvision.presenters import (
+    event_envelopes,
+    game_response,
+    prediction_response,
+    status_envelope,
+    timeline_points,
+)
 from courtvision.replay import replay_coordinator
 from courtvision.repository import (
     game_events,
@@ -48,10 +56,19 @@ async def games(
     session: AsyncSession = Depends(get_session),
 ) -> GamesResponse:
     records = await list_games(session, game_date)
+    pregame_runtime = await active_model_resolver.resolve(session, "pregame")
     responses = []
     for game in records:
         prediction = await latest_prediction(session, game.id, "pregame")
-        responses.append(game_response(game, prediction))
+        presented_prediction = None
+        if prediction is not None:
+            estimate = await resolve_pregame_estimate(
+                session,
+                prediction,
+                pregame_runtime,
+            )
+            presented_prediction = prediction_response(prediction, estimate)
+        responses.append(game_response(game, presented_prediction))
     return GamesResponse(date=game_date, games=responses)
 
 
@@ -64,7 +81,12 @@ async def game_detail(
     if game is None:
         raise HTTPException(status_code=404, detail="Game not found")
     prediction = await latest_prediction(session, game_id, "pregame")
-    return game_response(game, prediction)
+    presented_prediction = None
+    if prediction is not None:
+        runtime = await active_model_resolver.resolve(session, "pregame")
+        estimate = await resolve_pregame_estimate(session, prediction, runtime)
+        presented_prediction = prediction_response(prediction, estimate)
+    return game_response(game, presented_prediction)
 
 
 @api_router.get("/games/{game_id}/prediction", response_model=PredictionResponse)
@@ -75,9 +97,9 @@ async def game_prediction(
     prediction = await latest_prediction(session, game_id, "pregame")
     if prediction is None:
         raise HTTPException(status_code=404, detail="Prediction not found")
-    from courtvision.presenters import prediction_response
-
-    return prediction_response(prediction)
+    runtime = await active_model_resolver.resolve(session, "pregame")
+    estimate = await resolve_pregame_estimate(session, prediction, runtime)
+    return prediction_response(prediction, estimate)
 
 
 @api_router.get("/games/{game_id}/live", response_model=LiveSnapshotResponse)
@@ -90,8 +112,25 @@ async def live_snapshot(
         raise HTTPException(status_code=404, detail="Game not found")
 
     prediction = await latest_prediction(session, game_id, "pregame")
-    baseline = prediction.home_probability if prediction else 0.5
+    presented_prediction = None
+    baseline = 0.5
+    if prediction is not None:
+        pregame_runtime = await active_model_resolver.resolve(session, "pregame")
+        pregame_estimate = await resolve_pregame_estimate(
+            session,
+            prediction,
+            pregame_runtime,
+        )
+        presented_prediction = prediction_response(prediction, pregame_estimate)
+        baseline = pregame_estimate.probability
+    live_runtime = await active_model_resolver.resolve(session, "live_win")
     events = await game_events(session, game_id)
+    live_model_version, timeline = await timeline_points(
+        events,
+        game,
+        baseline,
+        live_runtime,
+    )
     now = datetime.now(UTC)
     lag_seconds = (
         max(0, int((now - as_utc(game.last_ingested_at)).total_seconds()))
@@ -103,27 +142,35 @@ async def live_snapshot(
     )
 
     return LiveSnapshotResponse(
-        game=game_response(game, prediction),
-        timeline=[timeline_point(event, game, baseline) for event in events],
+        game=game_response(game, presented_prediction),
+        timeline=timeline,
         latest_sequence=events[-1].sequence if events else 0,
         source_label="Historical replay" if game.source_status == "replay" else "Delayed data",
         is_stale=is_stale,
         freshness_seconds=lag_seconds,
-        live_model_version=prediction_service.live_model_version,
+        live_model_version=live_model_version,
         snapshot_generated_at=now,
     )
 
 
 @api_router.post("/shot-quality", response_model=ShotQualityResponse)
-async def shot_quality(request: ShotQualityRequest) -> ShotQualityResponse:
+async def shot_quality(
+    request: ShotQualityRequest,
+    session: AsyncSession = Depends(get_session),
+) -> ShotQualityResponse:
+    runtime = await active_model_resolver.resolve(session, "shot_quality")
+    model_version, attempts = await prediction_service.shot_quality_batch(
+        request.attempts,
+        runtime,
+    )
     return ShotQualityResponse(
         player_id=request.player_id,
         definition=(
             "Shooter-neutral expected field-goal probability from location and game context. "
             "Player identity is attribution only."
         ),
-        model_version=prediction_service.shot_model_version,
-        attempts=[prediction_service.shot_quality(attempt) for attempt in request.attempts],
+        model_version=model_version,
+        attempts=attempts,
     )
 
 
@@ -161,13 +208,37 @@ async def websocket_game(websocket: WebSocket, game_id: str, after_sequence: int
             await websocket.close(code=4404, reason="Game not found")
             return
         prediction = await latest_prediction(session, game_id, "pregame")
-        baseline = prediction.home_probability if prediction else 0.5
+        baseline = 0.5
+        if prediction is not None:
+            pregame_runtime = await active_model_resolver.resolve(session, "pregame")
+            pregame_estimate = await resolve_pregame_estimate(
+                session,
+                prediction,
+                pregame_runtime,
+            )
+            baseline = pregame_estimate.probability
+        live_runtime = await active_model_resolver.resolve(session, "live_win")
         backlog = await game_events(session, game_id, after_sequence=after_sequence)
 
     await connection_manager.connect(game_id, websocket)
     try:
-        for event in backlog:
-            await websocket.send_json(event_envelope(event, game, baseline).model_dump(mode="json"))
+        backlog_envelopes = await event_envelopes(
+            backlog,
+            game,
+            baseline,
+            runtime=live_runtime,
+        )
+        live_model_version = (
+            backlog_envelopes[0].model_version
+            if backlog_envelopes
+            else (
+                live_runtime.version
+                if live_runtime
+                else prediction_service.live_model_version
+            )
+        )
+        for envelope in backlog_envelopes:
+            await websocket.send_json(envelope.model_dump(mode="json"))
         last_sequence = backlog[-1].sequence if backlog else max(after_sequence, 0)
         while True:
             try:
@@ -179,6 +250,7 @@ async def websocket_game(websocket: WebSocket, game_id: str, after_sequence: int
                         sequence=last_sequence,
                         event_type="heartbeat",
                         payload={"status": "connected"},
+                        model_version=live_model_version,
                     ).model_dump(mode="json")
                 )
     except WebSocketDisconnect:

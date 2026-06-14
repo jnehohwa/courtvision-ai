@@ -8,8 +8,10 @@ from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from courtvision.broadcast import event_bus
+from courtvision.inference import active_model_resolver
 from courtvision.models import Game, PlayByPlayEvent, Shot
-from courtvision.presenters import event_envelope
+from courtvision.prediction_runtime import resolve_pregame_estimate
+from courtvision.presenters import event_envelopes
 from courtvision.repository import get_game, latest_prediction
 from courtvision.sources import PlayByPlaySourcePayload, SourceBatch, SourceEvent
 
@@ -153,23 +155,40 @@ class PlayByPlayIngestor:
         if game is None:
             return
         prediction = await latest_prediction(session, game_id, "pregame")
-        baseline = prediction.home_probability if prediction else 0.5
+        baseline = 0.5
+        if prediction is not None:
+            pregame_runtime = await active_model_resolver.resolve(
+                session,
+                "pregame",
+            )
+            estimate = await resolve_pregame_estimate(
+                session,
+                prediction,
+                pregame_runtime,
+            )
+            baseline = estimate.probability
+        live_runtime = await active_model_resolver.resolve(session, "live_win")
 
+        published_events = []
+        event_types = []
         for result in results:
             if result.status not in {"added", "corrected"} or result.event is None:
                 continue
-            await event_bus.publish(
-                event_envelope(
-                    result.event,
-                    game,
-                    baseline,
-                    event_type=(
-                        "play_corrected"
-                        if result.status == "corrected"
-                        else "play_added"
-                    ),
-                )
+            published_events.append(result.event)
+            event_types.append(
+                "play_corrected"
+                if result.status == "corrected"
+                else "play_added"
             )
+        envelopes = await event_envelopes(
+            published_events,
+            game,
+            baseline,
+            event_types=event_types,
+            runtime=live_runtime,
+        )
+        for envelope in envelopes:
+            await event_bus.publish(envelope)
 
     async def _allocate_sequence(
         self,

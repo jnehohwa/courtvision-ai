@@ -15,6 +15,8 @@ def test_lists_seeded_games(client):
     games = response.json()["games"]
     assert len(games) == 3
     assert games[0]["prediction"]["home_probability"] == 0.58
+    assert games[0]["scheduled_at"].endswith("Z")
+    assert games[0]["last_ingested_at"].endswith("Z")
 
 
 def test_live_snapshot_has_monotonic_timeline(client):
