@@ -33,3 +33,24 @@ jobs:
       - run: pnpm --filter @courtvision/web generate:contracts:file
       - run: git diff --exit-code apps/web/src/generated/openapi.ts
       - run: pnpm --filter @courtvision/web build
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --all-packages --all-extras
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @courtvision/web exec playwright install --with-deps chromium
+      - run: pnpm --filter @courtvision/web test:e2e
+        env:
+          COURTVISION_E2E_FULL_STACK: "1"
+          COURTVISION_E2E_API_COMMAND: "uv run python -m courtvision.e2e_server"
+          PLAYWRIGHT_BROWSER: chromium

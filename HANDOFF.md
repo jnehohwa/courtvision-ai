@@ -22,10 +22,13 @@ CourtVision AI has a verified replay-first vertical slice:
 
 The latest complete local verification passed:
 
-- Backend and ML: 75 tests
+- Backend and ML: 77 tests
 - Ruff: clean
 - Web: ESLint, TypeScript, Vitest, Next.js production build, and Playwright
   desktop/mobile dashboard interaction through the installed Chrome channel
+- Full-stack web acceptance: 4 desktop/mobile Playwright cases using a real
+  Alembic-seeded API, REST snapshot, game WebSocket, 20 replay events, and
+  replay completion
 - Swift: simulator build/run with no diagnostics and 5 XCTest cases
 - Native acceptance: populated fixture dashboard, game room, model/freshness
   metadata, win-probability chart, shot map selection, and timeline
@@ -107,6 +110,14 @@ Completed in this continuation:
 30. Verified desktop and mobile Playwright dashboard interaction. The first
     run correctly reported missing managed browsers; the repository's Chrome
     channel override passed both projects without changing application code.
+31. Added an `e2e`-only FastAPI launcher that recreates an isolated SQLite
+    database through Alembic, seeds fixtures, refuses non-E2E environments,
+    and can delete only the documented `/tmp/courtvision-playwright.db` file.
+32. Added dual-service Playwright orchestration and assertions proving the
+    browser receives the real live snapshot, connects with
+    `after_sequence=20`, streams all 20 replay events, and observes completion.
+33. Added a GitHub Actions E2E job that installs Chromium and runs the
+    full-stack replay workflow with desktop and mobile emulation.
 
 ## Important Product Boundaries
 
@@ -149,11 +160,11 @@ Completed in this continuation:
 5. Run the native checks with XcodeBuildMCP using the saved `CourtVision`
    project, `CourtVision` scheme, and iPhone 17 / iOS 26.5 simulator defaults.
 
-6. The next valuable increment is full-stack replay acceptance automation.
-   Start a seeded API, Redis-compatible replay path, and Next.js app under one
-   test harness; verify WebSocket event delivery, replay completion, reconnect
-   with `after_sequence`, missed-sequence recovery, and REST polling fallback.
-   Then add durable native UI coverage for the same recovery contract.
+6. The next valuable increment is fault-recovery acceptance. Extend the
+   browser harness to force a WebSocket disconnect, verify exponential
+   reconnect with the last observed sequence, prove missed-event recovery, and
+   force repeated connection failure into REST polling fallback. Then add
+   durable native UI coverage for the same recovery contract.
 
 ## Checkpoint Workflow
 
@@ -182,3 +193,6 @@ solely to increase contribution activity.
   upload/download smoke test. Configure identical storage settings on API,
   replay worker, and ingestion processes, with IAM restricted to the declared
   bucket and prefix.
+- Full-stack E2E intentionally leaves Redis unavailable to verify the local
+  in-process fallback. A separate Redis-backed worker acceptance environment
+  remains useful before production deployment.

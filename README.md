@@ -59,6 +59,19 @@ curl -X POST http://localhost:8000/internal/replays/cv-2026-bos-nyk/start \
 The public app labels every streamed event as `Historical replay` or
 `Delayed data`; it does not claim licensed real-time coverage.
 
+Run the full-stack browser acceptance workflow from `apps/web`:
+
+```bash
+COURTVISION_E2E_FULL_STACK=1 \
+PLAYWRIGHT_CHANNEL=chrome \
+./node_modules/.bin/playwright test
+```
+
+Playwright owns an isolated API and Next.js process, recreates
+`/tmp/courtvision-playwright.db` through Alembic, seeds the deterministic
+fixture, leaves Redis unavailable to exercise the in-process replay fallback,
+and verifies the REST snapshot plus WebSocket replay on desktop and mobile.
+
 ## Model promotion
 
 The API ships deterministic logistic and shot-location benchmarks so replay
