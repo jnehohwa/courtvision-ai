@@ -118,9 +118,10 @@ Completed in this continuation:
     `after_sequence=20`, streams all 20 replay events, and observes completion.
 33. Added a GitHub Actions E2E job that installs Chromium and runs the
     full-stack replay workflow with desktop and mobile emulation.
-34. Opted GitHub Actions into Node 24 ahead of the June 16, 2026 runner
-    transition and keyed the `uv` cache from all workspace `pyproject.toml`
-    files when a generated `uv.lock` was not locally obtainable.
+34. Upgraded checkout, Node, pnpm, and uv setup actions to Node 24-compatible
+    major versions ahead of the June 16, 2026 runner transition, and keyed the
+    `uv` cache from all workspace `pyproject.toml` files when a generated
+    `uv.lock` was not locally obtainable.
 
 ## Important Product Boundaries
 
