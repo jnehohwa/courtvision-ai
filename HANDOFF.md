@@ -119,9 +119,10 @@ Completed in this continuation:
 33. Added a GitHub Actions E2E job that installs Chromium and runs the
     full-stack replay workflow with desktop and mobile emulation.
 34. Upgraded checkout, Node, pnpm, and uv setup actions to Node 24-compatible
-    major versions ahead of the June 16, 2026 runner transition, and keyed the
-    `uv` cache from all workspace `pyproject.toml` files when a generated
-    `uv.lock` was not locally obtainable.
+    releases ahead of the June 16, 2026 runner transition. The uv action is
+    pinned to the verified `v8.2.0` commit because upstream does not publish a
+    `v8` alias. Its cache is keyed from all workspace `pyproject.toml` files
+    while a generated `uv.lock` is not locally obtainable.
 
 ## Important Product Boundaries
 
