@@ -1,6 +1,6 @@
 import Foundation
 
-actor GameStream {
+actor GameStream: GameEventStreaming {
     private let apiClient: APIClient
     private var task: URLSessionWebSocketTask?
 

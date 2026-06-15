@@ -29,9 +29,10 @@ The latest complete local verification passed:
 - Full-stack web acceptance: 8 desktop/mobile Playwright cases using a real
   Alembic-seeded API, REST snapshot, game WebSocket, 20 replay events, replay
   completion, disconnect/resume, missed-event recovery, and REST fallback
-- Swift: simulator build/run with no diagnostics and 5 XCTest cases
+- Swift: simulator build/run with no diagnostics and 7 XCTest cases
 - Native acceptance: populated fixture dashboard, game room, model/freshness
-  metadata, win-probability chart, shot map selection, and timeline
+  metadata, win-probability chart, shot map selection, and timeline; model
+  tests cover sequence resume and last-snapshot retention
 - Database: blank SQLite upgrade through Alembic `0005`, downgrade to `0004`,
   re-upgrade, and fixture seed
 - OpenAPI: regenerated contract matches the committed schema
@@ -134,6 +135,16 @@ Completed in this continuation:
 37. Changed the full-stack browser harness from the development server to the
     production standalone Next.js bundle, avoiding Turbopack manifest churn
     between Playwright projects.
+38. Added injectable native snapshot and game-stream boundaries, a configurable
+    reconnect/polling policy, and Sendable API contracts for Swift 6 actor
+    isolation.
+39. Changed the iOS game room to reset retry state on any valid envelope,
+    reconnect from the latest observed sequence, enter persistent REST polling
+    after bounded stream failures, and preserve the last valid snapshot when
+    polling fails.
+40. Added inline native degraded-state messaging plus XCTest coverage proving
+    reconnect from sequence 5, recovery through sequence 20, bounded fallback
+    after three failed streams, and sequence-20 retention during source outage.
 
 ## Important Product Boundaries
 
@@ -176,10 +187,11 @@ Completed in this continuation:
 5. Run the native checks with XcodeBuildMCP using the saved `CourtVision`
    project, `CourtVision` scheme, and iPhone 17 / iOS 26.5 simulator defaults.
 
-6. The next valuable increment is durable native recovery coverage. Add
-   injectable URLSession/WebSocket transport boundaries, verify sequence-based
-   reconnect and missed-event recovery, and exercise the SwiftUI degraded-state
-   presentation without depending on a live external service.
+6. The next valuable increment is Redis-backed worker acceptance. Run replay
+   through a real Redis-compatible queue/pub-sub boundary, terminate and restart
+   the worker mid-game, and prove sequence recovery plus last-snapshot service
+   continuity. A macOS GitHub Actions job for the seven native tests is also a
+   useful deployment gate once the runner image is pinned.
 
 ## Checkpoint Workflow
 

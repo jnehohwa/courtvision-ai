@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1A15C145DFF1D632AAEC92B0 /* GameDetailModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47E0E9109F5030801690F967 /* GameDetailModelTests.swift */; };
 		210BED3D264FD7E180FB8036 /* CourtVisionApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08B33FFD3C6F6BFF821258B6 /* CourtVisionApp.swift */; };
 		27F849C31AC55D921C2B9207 /* GameDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62BF7AF258EF460F434FCFE1 /* GameDetailView.swift */; };
 		2E95C8AD02AEC7B544B6128F /* APIModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADBDBABE1524E1C5F55420A3 /* APIModels.swift */; };
@@ -46,6 +47,7 @@
 		29543B5455D88AE2B29229EB /* GamesModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GamesModel.swift; sourceTree = "<group>"; };
 		3B610E9B277A47AB85A520D0 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		45BC2F617AE621B2EC562967 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
+		47E0E9109F5030801690F967 /* GameDetailModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameDetailModelTests.swift; sourceTree = "<group>"; };
 		5C817730117DB38FE263E0D1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		62BF7AF258EF460F434FCFE1 /* GameDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameDetailView.swift; sourceTree = "<group>"; };
 		680004CCEAD99B3E328B9FCA /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
@@ -167,6 +169,7 @@
 			isa = PBXGroup;
 			children = (
 				CDCAE2632E0840484CA76344 /* APIModelsTests.swift */,
+				47E0E9109F5030801690F967 /* GameDetailModelTests.swift */,
 			);
 			path = CourtVisionTests;
 			sourceTree = "<group>";
@@ -299,6 +302,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D5D7ACE8C6AD389A2DF962E4 /* APIModelsTests.swift in Sources */,
+				1A15C145DFF1D632AAEC92B0 /* GameDetailModelTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

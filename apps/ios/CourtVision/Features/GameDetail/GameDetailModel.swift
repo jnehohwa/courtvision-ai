@@ -1,6 +1,46 @@
 import Foundation
 import Observation
 
+protocol LiveSnapshotProviding: Sendable {
+    func liveSnapshot(gameID: String) async throws -> LiveSnapshot
+}
+
+protocol GameEventStreaming: Actor {
+    func messages(
+        gameID: String,
+        after sequence: Int
+    ) -> AsyncThrowingStream<WebSocketEnvelope, Error>
+    func disconnect()
+}
+
+extension APIClient: LiveSnapshotProviding {}
+
+struct GameDetailRecoveryPolicy: Sendable {
+    let maxReconnectAttempts: Int
+    let reconnectBaseMilliseconds: Int
+    let maximumReconnectMilliseconds: Int
+    let pollingIntervalMilliseconds: Int
+
+    static let standard = GameDetailRecoveryPolicy(
+        maxReconnectAttempts: 4,
+        reconnectBaseMilliseconds: 1_000,
+        maximumReconnectMilliseconds: 10_000,
+        pollingIntervalMilliseconds: 10_000
+    )
+
+    func reconnectDelay(for attempt: Int) -> Duration {
+        let exponent = min(max(attempt, 1), 10)
+        let multiplier = 1 << exponent
+        return .milliseconds(
+            min(reconnectBaseMilliseconds * multiplier, maximumReconnectMilliseconds)
+        )
+    }
+
+    var pollingInterval: Duration {
+        .milliseconds(pollingIntervalMilliseconds)
+    }
+}
+
 @MainActor
 @Observable
 final class GameDetailModel {
@@ -11,35 +51,53 @@ final class GameDetailModel {
     }
 
     private let game: Game
-    private let apiClient: APIClient
-    private let stream: GameStream
+    private let snapshotProvider: any LiveSnapshotProviding
+    private let stream: any GameEventStreaming
+    private let recoveryPolicy: GameDetailRecoveryPolicy
+    private let sleep: @Sendable (Duration) async throws -> Void
 
     var snapshot: LiveSnapshot?
     var timeline: [TimelinePoint] = []
     var selectedPoint: TimelinePoint?
     var connectionState: ConnectionState = .connecting
     var errorMessage: String?
+    var connectionMessage: String?
     var liveModelVersion = "Model unavailable"
 
-    init(game: Game, apiClient: APIClient) {
+    convenience init(game: Game, apiClient: APIClient) {
+        self.init(
+            game: game,
+            snapshotProvider: apiClient,
+            stream: GameStream(apiClient: apiClient)
+        )
+    }
+
+    init(
+        game: Game,
+        snapshotProvider: any LiveSnapshotProviding,
+        stream: any GameEventStreaming,
+        recoveryPolicy: GameDetailRecoveryPolicy = .standard,
+        sleep: @escaping @Sendable (Duration) async throws -> Void = {
+            try await Task.sleep(for: $0)
+        }
+    ) {
         self.game = game
-        self.apiClient = apiClient
-        stream = GameStream(apiClient: apiClient)
+        self.snapshotProvider = snapshotProvider
+        self.stream = stream
+        self.recoveryPolicy = recoveryPolicy
+        self.sleep = sleep
     }
 
     func load() async {
         do {
-            let snapshot = try await apiClient.liveSnapshot(gameID: game.id)
-            self.snapshot = snapshot
-            timeline = snapshot.timeline
-            selectedPoint = snapshot.timeline.last
-            liveModelVersion = snapshot.liveModelVersion
+            let snapshot = try await snapshotProvider.liveSnapshot(gameID: game.id)
+            apply(snapshot)
             await connect(after: snapshot.latestSequence)
         } catch is CancellationError {
             return
         } catch {
             errorMessage = error.localizedDescription
-            connectionState = .polling
+            await pollSnapshots()
         }
     }
 
@@ -56,6 +114,8 @@ final class GameDetailModel {
                     gameID: game.id,
                     after: resumeSequence
                 ) {
+                    reconnectAttempt = 0
+                    connectionMessage = nil
                     if let modelVersion = envelope.modelVersion {
                         liveModelVersion = modelVersion
                     }
@@ -65,39 +125,62 @@ final class GameDetailModel {
                     timeline.sort { $0.sequence < $1.sequence }
                     selectedPoint = point
                     resumeSequence = max(resumeSequence, point.sequence)
-                    reconnectAttempt = 0
                 }
+                reconnectAttempt += 1
             } catch is CancellationError {
                 return
             } catch {
                 reconnectAttempt += 1
             }
 
-            if reconnectAttempt > 4 {
-                connectionState = .polling
-                errorMessage = "Live updates are polling while the stream reconnects."
-                do {
-                    let latest = try await apiClient.liveSnapshot(gameID: game.id)
-                    snapshot = latest
-                    timeline = latest.timeline
-                    selectedPoint = latest.timeline.last
-                    liveModelVersion = latest.liveModelVersion
-                    resumeSequence = latest.latestSequence
-                    reconnectAttempt = 0
-                } catch is CancellationError {
-                    return
-                } catch {
-                    errorMessage = "The last valid snapshot is still displayed."
-                }
+            if reconnectAttempt > recoveryPolicy.maxReconnectAttempts {
+                await pollSnapshots()
+                return
             }
 
-            let delaySeconds = min(pow(2.0, Double(max(reconnectAttempt, 1))), 10.0)
             do {
-                try await Task.sleep(for: .seconds(delaySeconds))
+                try await sleep(recoveryPolicy.reconnectDelay(for: reconnectAttempt))
+            } catch is CancellationError {
+                return
+            } catch {
+                errorMessage = error.localizedDescription
+                return
+            }
+        }
+    }
+
+    private func pollSnapshots() async {
+        connectionState = .polling
+        connectionMessage = "Live updates are using snapshot polling."
+
+        while !Task.isCancelled {
+            do {
+                let latest = try await snapshotProvider.liveSnapshot(gameID: game.id)
+                apply(latest)
+                errorMessage = nil
+                connectionMessage = "Snapshot polling is active."
+            } catch is CancellationError {
+                return
+            } catch {
+                if snapshot == nil {
+                    errorMessage = error.localizedDescription
+                }
+                connectionMessage = "The last valid snapshot is displayed while the source is unavailable."
+            }
+
+            do {
+                try await sleep(recoveryPolicy.pollingInterval)
             } catch {
                 return
             }
         }
+    }
+
+    private func apply(_ snapshot: LiveSnapshot) {
+        self.snapshot = snapshot
+        timeline = snapshot.timeline
+        selectedPoint = snapshot.timeline.last
+        liveModelVersion = snapshot.liveModelVersion
     }
 
     func select(_ point: TimelinePoint) {

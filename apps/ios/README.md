@@ -11,3 +11,8 @@ open CourtVision.xcodeproj
 
 The simulator client defaults to `http://127.0.0.1:8000`. Set the
 `COURTVISION_API_URL` launch environment variable to use another backend.
+
+The game room fetches an authoritative snapshot before opening its WebSocket,
+reconnects from the last observed sequence with bounded exponential backoff,
+and switches to periodic REST snapshots after repeated stream failures. Failed
+polls retain the last valid timeline and surface the degraded state inline.

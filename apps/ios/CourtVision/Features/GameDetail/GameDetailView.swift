@@ -20,7 +20,8 @@ struct GameDetailView: View {
                     modelVersion: model.liveModelVersion,
                     isStale: model.snapshot?.isStale ?? false,
                     freshnessSeconds: model.snapshot?.freshnessSeconds,
-                    connectionState: model.connectionState.rawValue
+                    connectionState: model.connectionState.rawValue,
+                    connectionMessage: model.connectionMessage
                 )
 
                 ProbabilityTimeline(
@@ -74,6 +75,7 @@ struct ScoreboardView: View {
     let isStale: Bool
     let freshnessSeconds: Int?
     let connectionState: String
+    let connectionMessage: String?
 
     private var probability: Double {
         point?.homeProbability ?? game.prediction?.homeProbability ?? 0.5
@@ -93,6 +95,13 @@ struct ScoreboardView: View {
                 }
                 .font(.caption.monospaced())
                 .foregroundStyle(isStale ? CourtVisionTheme.away : CourtVisionTheme.muted)
+            }
+
+            if let connectionMessage {
+                Label(connectionMessage, systemImage: "wifi.exclamationmark")
+                    .font(.caption)
+                    .foregroundStyle(CourtVisionTheme.muted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             HStack(alignment: .firstTextBaseline) {

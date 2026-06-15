@@ -1,19 +1,19 @@
 import Foundation
 
-enum SourceStatus: String, Codable {
+enum SourceStatus: String, Codable, Sendable {
     case replay
     case delayed
     case stale
     case unavailable
 }
 
-struct Team: Codable, Hashable, Identifiable {
+struct Team: Codable, Hashable, Identifiable, Sendable {
     let id: String
     let name: String
     let abbreviation: String
 }
 
-struct Prediction: Codable, Hashable {
+struct Prediction: Codable, Hashable, Sendable {
     let gameId: String
     let kind: String
     let homeProbability: Double
@@ -24,7 +24,7 @@ struct Prediction: Codable, Hashable {
     let confidence: String
 }
 
-struct Game: Codable, Hashable, Identifiable {
+struct Game: Codable, Hashable, Identifiable, Sendable {
     let id: String
     let scheduledAt: Date
     let homeTeam: Team
@@ -39,12 +39,12 @@ struct Game: Codable, Hashable, Identifiable {
     let prediction: Prediction?
 }
 
-struct GamesResponse: Codable {
+struct GamesResponse: Codable, Sendable {
     let date: String
     let games: [Game]
 }
 
-struct TimelinePoint: Codable, Hashable, Identifiable {
+struct TimelinePoint: Codable, Hashable, Identifiable, Sendable {
     var id: Int { sequence }
 
     let sequence: Int
@@ -60,7 +60,7 @@ struct TimelinePoint: Codable, Hashable, Identifiable {
     let shotValue: Int?
 }
 
-struct LiveSnapshot: Codable {
+struct LiveSnapshot: Codable, Sendable {
     let game: Game
     let timeline: [TimelinePoint]
     let latestSequence: Int
@@ -71,7 +71,7 @@ struct LiveSnapshot: Codable {
     let snapshotGeneratedAt: Date
 }
 
-struct PlayPayload: Codable {
+struct PlayPayload: Codable, Sendable {
     let sequence: Int
     let sourceEventId: String
     let revision: Int
@@ -106,7 +106,7 @@ struct PlayPayload: Codable {
     }
 }
 
-struct WebSocketEnvelope: Codable {
+struct WebSocketEnvelope: Codable, Sendable {
     let type: String
     let schemaVersion: String
     let gameId: String
