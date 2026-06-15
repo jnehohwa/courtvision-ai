@@ -118,6 +118,9 @@ Completed in this continuation:
     `after_sequence=20`, streams all 20 replay events, and observes completion.
 33. Added a GitHub Actions E2E job that installs Chromium and runs the
     full-stack replay workflow with desktop and mobile emulation.
+34. Opted GitHub Actions into Node 24 ahead of the June 16, 2026 runner
+    transition and keyed the `uv` cache from all workspace `pyproject.toml`
+    files when a generated `uv.lock` was not locally obtainable.
 
 ## Important Product Boundaries
 
@@ -196,3 +199,7 @@ solely to increase contribution activity.
 - Full-stack E2E intentionally leaves Redis unavailable to verify the local
   in-process fallback. A separate Redis-backed worker acceptance environment
   remains useful before production deployment.
+- The repository still has no committed `uv.lock`; a local `uv` wheel download
+  was cancelled after sustained CDN throughput of roughly 34 kB/s. CI cache
+  invalidation is explicitly keyed from the workspace dependency manifests in
+  the meantime.

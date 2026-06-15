@@ -1,5 +1,8 @@
 name: ci
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 on:
   push:
   pull_request:
@@ -10,6 +13,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
+        with:
+          cache-dependency-glob: "**/pyproject.toml"
       - run: uv sync --all-packages --all-extras
       - run: uv run ruff check apps/api ml
       - run: uv run pytest
@@ -39,6 +44,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
+        with:
+          cache-dependency-glob: "**/pyproject.toml"
       - run: uv sync --all-packages --all-extras
       - uses: pnpm/action-setup@v4
         with:
