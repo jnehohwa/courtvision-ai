@@ -148,6 +148,14 @@ Completed in this continuation:
 41. Added a public GitHub Actions native gate pinned to the standard
     `macos-26` arm64 image, Xcode 26.5, and the installed iPhone 17 / iOS 26.5
     simulator destination.
+42. Replaced destructive replay `BLPOP` with recoverable Redis `BLMOVE`,
+    token-owned locks, an atomic Lua acknowledgement, validated commands, and
+    malformed-command removal while preserving the one-worker deployment
+    boundary.
+43. Added a dedicated real-Redis CI job that kills the replay worker after
+    sequence 5, restarts it from the processing list, requires a complete
+    sequence 1-through-20 replay, and checks stale-lock ownership plus poison
+    command cleanup.
 
 ## Important Product Boundaries
 

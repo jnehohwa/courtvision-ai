@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 from collections import defaultdict
+from uuid import uuid4
 
 from fastapi import WebSocket
 from redis.asyncio import Redis
@@ -13,7 +14,15 @@ from courtvision.schemas import WebSocketEnvelope
 
 EVENT_CHANNEL = "courtvision:events"
 REPLAY_QUEUE = "courtvision:replay:commands"
+REPLAY_PROCESSING_QUEUE = "courtvision:replay:processing"
 REPLAY_LOCK_PREFIX = "courtvision:replay:lock:"
+ACKNOWLEDGE_REPLAY_SCRIPT = """
+local removed = redis.call("LREM", KEYS[1], 1, ARGV[1])
+if redis.call("GET", KEYS[2]) == ARGV[2] then
+    redis.call("DEL", KEYS[2])
+end
+return removed
+"""
 
 
 class ConnectionManager:
@@ -102,22 +111,57 @@ class EventBus:
             return False
 
         lock_key = f"{REPLAY_LOCK_PREFIX}{game_id}"
-        acquired = await self.redis.set(lock_key, "queued", ex=300, nx=True)
+        lock_token = uuid4().hex
+        acquired = await self.redis.set(lock_key, lock_token, ex=300, nx=True)
         if not acquired:
             return False
+        raw_command = json.dumps(
+            {
+                "game_id": game_id,
+                "tick_seconds": tick_seconds,
+                "lock_token": lock_token,
+            }
+        )
         try:
-            await self.redis.rpush(
-                REPLAY_QUEUE,
-                json.dumps({"game_id": game_id, "tick_seconds": tick_seconds}),
-            )
+            await self.redis.rpush(REPLAY_QUEUE, raw_command)
         except Exception:
-            await self.redis.delete(lock_key)
+            await self._delete_lock_if_owned(lock_key, lock_token)
             raise
         return True
 
-    async def release_replay_lock(self, game_id: str) -> None:
+    async def acknowledge_replay(
+        self,
+        raw_command: str,
+        game_id: str,
+        lock_token: str,
+    ) -> None:
         if self.redis:
-            await self.redis.delete(f"{REPLAY_LOCK_PREFIX}{game_id}")
+            await self.redis.eval(
+                ACKNOWLEDGE_REPLAY_SCRIPT,
+                2,
+                REPLAY_PROCESSING_QUEUE,
+                f"{REPLAY_LOCK_PREFIX}{game_id}",
+                raw_command,
+                lock_token,
+            )
+
+    async def discard_replay(self, raw_command: str) -> None:
+        if self.redis:
+            await self.redis.lrem(REPLAY_PROCESSING_QUEUE, 1, raw_command)
+
+    async def _delete_lock_if_owned(self, lock_key: str, lock_token: str) -> None:
+        if self.redis:
+            await self.redis.eval(
+                """
+                if redis.call("GET", KEYS[1]) == ARGV[1] then
+                    return redis.call("DEL", KEYS[1])
+                end
+                return 0
+                """,
+                1,
+                lock_key,
+                lock_token,
+            )
 
     async def _listen(self) -> None:
         assert self._pubsub is not None

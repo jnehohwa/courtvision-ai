@@ -176,6 +176,13 @@ commands are queued through Redis-compatible storage and consumed by
 is unavailable in local development, the API runs deterministic replay in
 process and continues serving the last valid snapshots.
 
+The production worker atomically moves each command into a processing list
+before replay begins. A restarted worker recovers pending work from the
+beginning, while clients reconcile deterministic sequence IDs. Successful
+completion atomically removes the pending item and releases only the matching
+token-owned game lock. This MVP deployment intentionally runs one replay worker;
+multi-worker scaling should migrate the queue to Redis Streams consumer groups.
+
 ## Repository
 
 ```text
