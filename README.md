@@ -70,7 +70,10 @@ PLAYWRIGHT_CHANNEL=chrome \
 Playwright owns an isolated API and Next.js process, recreates
 `/tmp/courtvision-playwright.db` through Alembic, seeds the deterministic
 fixture, leaves Redis unavailable to exercise the in-process replay fallback,
-and verifies the REST snapshot plus WebSocket replay on desktop and mobile.
+builds the production standalone web bundle, and verifies the REST snapshot
+plus WebSocket replay on desktop and mobile. Recovery cases force a mid-replay
+disconnect, confirm sequence-based catch-up, exhaust bounded reconnects, enter
+REST polling, and preserve the last valid snapshot through a simulated `503`.
 
 ## Model promotion
 

@@ -11,7 +11,10 @@ const fullStack = process.env.COURTVISION_E2E_FULL_STACK === "1";
 const apiCommand =
   process.env.COURTVISION_E2E_API_COMMAND ??
   "../../.venv/bin/python -m courtvision.e2e_server";
-const nextCommand = "./node_modules/.bin/next dev --hostname 127.0.0.1";
+const nextCommand =
+  "./node_modules/.bin/next build && " +
+  "cp -R .next/static .next/standalone/apps/web/.next/static && " +
+  "HOSTNAME=127.0.0.1 PORT=3000 node .next/standalone/apps/web/server.js";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -44,6 +47,9 @@ export default defineConfig({
             ...process.env,
             NEXT_PUBLIC_API_URL: "http://127.0.0.1:8000",
             NEXT_PUBLIC_WS_URL: "ws://127.0.0.1:8000",
+            NEXT_PUBLIC_WS_RECONNECT_BASE_MS: "50",
+            NEXT_PUBLIC_WS_MAX_RECONNECT_ATTEMPTS: "2",
+            NEXT_PUBLIC_LIVE_POLL_INTERVAL_MS: "100",
             COURTVISION_INTERNAL_API_URL: "http://127.0.0.1:8000",
             COURTVISION_INTERNAL_API_KEY: "local-development-key",
           },

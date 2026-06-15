@@ -26,9 +26,9 @@ The latest complete local verification passed:
 - Ruff: clean
 - Web: ESLint, TypeScript, Vitest, Next.js production build, and Playwright
   desktop/mobile dashboard interaction through the installed Chrome channel
-- Full-stack web acceptance: 4 desktop/mobile Playwright cases using a real
-  Alembic-seeded API, REST snapshot, game WebSocket, 20 replay events, and
-  replay completion
+- Full-stack web acceptance: 8 desktop/mobile Playwright cases using a real
+  Alembic-seeded API, REST snapshot, game WebSocket, 20 replay events, replay
+  completion, disconnect/resume, missed-event recovery, and REST fallback
 - Swift: simulator build/run with no diagnostics and 5 XCTest cases
 - Native acceptance: populated fixture dashboard, game room, model/freshness
   metadata, win-probability chart, shot map selection, and timeline
@@ -123,6 +123,17 @@ Completed in this continuation:
     pinned to the verified `v8.2.0` commit because upstream does not publish a
     `v8` alias. Its cache is keyed from all workspace `pyproject.toml` files
     while a generated `uv.lock` is not locally obtainable.
+35. Made WebSocket retries bounded by consecutive message-free failures,
+    exposed honest connecting/connected/polling UI states, and switched REST
+    fallback to non-overlapping polling that preserves the last valid snapshot
+    when a poll fails.
+36. Added desktop/mobile acceptance that disconnects after sequence 5, proves
+    reconnect with `after_sequence=5`, recovers sequences 6 through 20, forces
+    repeated socket failure into polling, and retains sequence 20 through a
+    simulated REST `503`.
+37. Changed the full-stack browser harness from the development server to the
+    production standalone Next.js bundle, avoiding Turbopack manifest churn
+    between Playwright projects.
 
 ## Important Product Boundaries
 
@@ -149,7 +160,7 @@ Completed in this continuation:
 3. Run backend tests with:
 
    ```bash
-   PYTHONPATH=apps/api .venv/bin/pytest apps/api/tests -q
+   PYTHONPATH=apps/api:ml .venv/bin/pytest -q
    PYTHONPATH=apps/api .venv/bin/ruff check apps/api ml
    ```
 
@@ -165,11 +176,10 @@ Completed in this continuation:
 5. Run the native checks with XcodeBuildMCP using the saved `CourtVision`
    project, `CourtVision` scheme, and iPhone 17 / iOS 26.5 simulator defaults.
 
-6. The next valuable increment is fault-recovery acceptance. Extend the
-   browser harness to force a WebSocket disconnect, verify exponential
-   reconnect with the last observed sequence, prove missed-event recovery, and
-   force repeated connection failure into REST polling fallback. Then add
-   durable native UI coverage for the same recovery contract.
+6. The next valuable increment is durable native recovery coverage. Add
+   injectable URLSession/WebSocket transport boundaries, verify sequence-based
+   reconnect and missed-event recovery, and exercise the SwiftUI degraded-state
+   presentation without depending on a live external service.
 
 ## Checkpoint Workflow
 

@@ -70,6 +70,12 @@ export function Dashboard() {
     selectedPoint?.home_probability ?? game.prediction?.home_probability ?? 0.5;
   const visibleEvents = useMemo(() => timeline.slice(-6).reverse(), [timeline]);
   const progress = timeline.length / Math.max(snapshot?.timeline.length ?? timeline.length, 1);
+  const connectionLabel =
+    connectionState === "connected"
+      ? "WebSocket connected"
+      : connectionState === "polling"
+        ? "Polling fallback"
+        : "WebSocket connecting";
 
   const selectPoint = (point: TimelinePoint) => setSelectedSequence(point.sequence);
 
@@ -137,7 +143,7 @@ export function Dashboard() {
             </div>
             <div className="chart-heading">
               <h3>Win Probability Over Time</h3>
-              <span>{connectionState === "polling" ? "Polling fallback" : "WebSocket connected"}</span>
+              <span>{connectionLabel}</span>
             </div>
             <ProbabilityChart points={timeline} activeSequence={selectedPoint?.sequence} />
           </article>

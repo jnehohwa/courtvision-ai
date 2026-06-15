@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchLiveSnapshot } from "@/lib/api";
+import { fallbackSnapshot } from "@/lib/fixtures";
 import type {
   LiveSnapshot,
   PlayPayload,
@@ -10,6 +11,24 @@ import type {
 } from "@/types/api";
 
 const wsBaseUrl = process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:8000";
+
+function positiveInteger(value: string | undefined, fallback: number) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+const reconnectBaseDelayMs = positiveInteger(
+  process.env.NEXT_PUBLIC_WS_RECONNECT_BASE_MS,
+  1000,
+);
+const maxReconnectAttempts = positiveInteger(
+  process.env.NEXT_PUBLIC_WS_MAX_RECONNECT_ATTEMPTS,
+  4,
+);
+const pollIntervalMs = positiveInteger(
+  process.env.NEXT_PUBLIC_LIVE_POLL_INTERVAL_MS,
+  10_000,
+);
 
 function toTimelinePoint(payload: PlayPayload): TimelinePoint {
   return {
@@ -50,7 +69,15 @@ export function useLiveGame(gameId: string) {
         lastSeenSequence.current = value.latest_sequence;
       })
       .catch(() => {
-        // Development remounts intentionally cancel the first request.
+        if (controller.signal.aborted) return;
+        const fallback = {
+          ...fallbackSnapshot,
+          game: { ...fallbackSnapshot.game, id: gameId },
+        };
+        setSnapshot(fallback);
+        setTimeline(fallback.timeline);
+        setLiveModelVersion(fallback.live_model_version);
+        lastSeenSequence.current = fallback.latest_sequence;
       });
     return () => controller.abort();
   }, [gameId]);
@@ -69,11 +96,11 @@ export function useLiveGame(gameId: string) {
       setConnectionState("connecting");
 
       socket.onopen = () => {
-        reconnectAttempt.current = 0;
         setConnectionState("connected");
       };
       socket.onmessage = (event) => {
         const envelope = JSON.parse(event.data) as WebSocketEnvelope;
+        reconnectAttempt.current = 0;
         if (envelope.model_version) {
           setLiveModelVersion(envelope.model_version);
         }
@@ -108,11 +135,15 @@ export function useLiveGame(gameId: string) {
       socket.onclose = () => {
         if (disposed) return;
         reconnectAttempt.current += 1;
-        if (reconnectAttempt.current > 4) {
+        if (reconnectAttempt.current > maxReconnectAttempts) {
           setConnectionState("polling");
           return;
         }
-        const delay = Math.min(1000 * 2 ** reconnectAttempt.current, 10_000);
+        setConnectionState("connecting");
+        const delay = Math.min(
+          reconnectBaseDelayMs * 2 ** reconnectAttempt.current,
+          10_000,
+        );
         reconnectTimer = setTimeout(connect, delay);
       };
     };
@@ -127,15 +158,31 @@ export function useLiveGame(gameId: string) {
 
   useEffect(() => {
     if (connectionState !== "polling") return;
-    const interval = setInterval(() => {
-      void fetchLiveSnapshot(gameId).then((value) => {
+    let disposed = false;
+    let pollTimer: ReturnType<typeof setTimeout> | undefined;
+
+    const poll = async () => {
+      try {
+        const value = await fetchLiveSnapshot(gameId);
+        if (disposed) return;
         setSnapshot(value);
         setLiveModelVersion(value.live_model_version);
         lastSeenSequence.current = value.latest_sequence;
         if (!isReplaying) setTimeline(value.timeline);
-      });
-    }, 10_000);
-    return () => clearInterval(interval);
+      } catch {
+        // Preserve the last valid snapshot and retry on the next polling tick.
+      } finally {
+        if (!disposed) {
+          pollTimer = setTimeout(poll, pollIntervalMs);
+        }
+      }
+    };
+
+    void poll();
+    return () => {
+      disposed = true;
+      if (pollTimer) clearTimeout(pollTimer);
+    };
   }, [connectionState, gameId, isReplaying]);
 
   const startReplay = useCallback(async () => {
