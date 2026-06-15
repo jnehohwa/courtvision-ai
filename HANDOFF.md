@@ -145,6 +145,9 @@ Completed in this continuation:
 40. Added inline native degraded-state messaging plus XCTest coverage proving
     reconnect from sequence 5, recovery through sequence 20, bounded fallback
     after three failed streams, and sequence-20 retention during source outage.
+41. Added a public GitHub Actions native gate pinned to the standard
+    `macos-26` arm64 image, Xcode 26.5, and the installed iPhone 17 / iOS 26.5
+    simulator destination.
 
 ## Important Product Boundaries
 

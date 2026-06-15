@@ -58,3 +58,20 @@ jobs:
           COURTVISION_E2E_FULL_STACK: "1"
           COURTVISION_E2E_API_COMMAND: "uv run python -m courtvision.e2e_server"
           PLAYWRIGHT_BROWSER: chromium
+
+  ios:
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - name: Select Xcode 26.5
+        run: sudo xcode-select -s /Applications/Xcode_26.5.app/Contents/Developer
+      - name: Run iOS simulator tests
+        run: |
+          xcodebuild test \
+            -project apps/ios/CourtVision.xcodeproj \
+            -scheme CourtVision \
+            -destination "platform=iOS Simulator,OS=26.5,name=iPhone 17" \
+            -derivedDataPath "$RUNNER_TEMP/courtvision-derived-data" \
+            -parallel-testing-enabled NO \
+            CODE_SIGNING_ALLOWED=NO
