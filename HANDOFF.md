@@ -1,6 +1,6 @@
 # CourtVision AI Handoff
 
-Last updated: 2026-06-15
+Last updated: 2026-06-16
 
 ## Current State
 
@@ -22,7 +22,7 @@ CourtVision AI has a verified replay-first vertical slice:
 
 The latest complete local verification passed:
 
-- Backend and ML: 77 tests
+- Backend and ML: 79 tests locally, plus 3 Redis-only tests in CI
 - Ruff: clean
 - Web: ESLint, TypeScript, Vitest, Next.js production build, and Playwright
   desktop/mobile dashboard interaction through the installed Chrome channel
@@ -156,6 +156,10 @@ Completed in this continuation:
     sequence 5, restarts it from the processing list, requires a complete
     sequence 1-through-20 replay, and checks stale-lock ownership plus poison
     command cleanup.
+44. Strengthened the shared WebSocket JSON Schema with typed play-event
+    payloads and added backend contract tests that validate actual presenter
+    output for `play_added`, `play_corrected`, `source_status`, `heartbeat`,
+    and `replay_completed` frames.
 
 ## Important Product Boundaries
 
@@ -198,11 +202,10 @@ Completed in this continuation:
 5. Run the native checks with XcodeBuildMCP using the saved `CourtVision`
    project, `CourtVision` scheme, and iPhone 17 / iOS 26.5 simulator defaults.
 
-6. The next valuable increment is Redis-backed worker acceptance. Run replay
-   through a real Redis-compatible queue/pub-sub boundary, terminate and restart
-   the worker mid-game, and prove sequence recovery plus last-snapshot service
-   continuity. A macOS GitHub Actions job for the seven native tests is also a
-   useful deployment gate once the runner image is pinned.
+6. The next valuable increment is client contract automation. Generate or
+   validate client-facing WebSocket types from `contracts/websocket-envelope.schema.json`
+   so the Next.js and SwiftUI clients cannot drift from the backend envelope
+   contract.
 
 ## Checkpoint Workflow
 
