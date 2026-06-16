@@ -99,15 +99,13 @@ jobs:
             "com.apple.CoreSimulator.SimDeviceType.iPhone-17" \
             "com.apple.CoreSimulator.SimRuntime.iOS-26-5")"
           echo "udid=$simulator_udid" >> "$GITHUB_OUTPUT"
-          xcrun simctl boot "$simulator_udid"
-          xcrun simctl bootstatus "$simulator_udid" -b
       - name: Run iOS simulator tests
         run: |
           xcodebuild test \
             -project apps/ios/CourtVision.xcodeproj \
             -scheme CourtVision \
             -destination "platform=iOS Simulator,id=${{ steps.ios-simulator.outputs.udid }}" \
-            -destination-timeout 60 \
+            -destination-timeout 120 \
             -derivedDataPath "$RUNNER_TEMP/courtvision-derived-data" \
             -parallel-testing-enabled NO \
             CODE_SIGNING_ALLOWED=NO

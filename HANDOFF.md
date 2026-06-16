@@ -172,9 +172,9 @@ Completed in this continuation:
     rejection, and a host-side iOS contract checker that validates Swift enum
     raw values against `contracts/websocket-envelope.schema.json` before
     simulator tests run in CI.
-48. Hardened the iOS GitHub Actions job to create and boot an iPhone 17 / iOS
-    26.5 simulator, then target it by UDID instead of assuming the runner image
-    has a pre-created named simulator.
+48. Hardened the iOS GitHub Actions job to create an iPhone 17 / iOS 26.5
+    simulator, then target it by UDID instead of assuming the runner image has
+    a pre-created named simulator.
 
 ## Important Product Boundaries
 
