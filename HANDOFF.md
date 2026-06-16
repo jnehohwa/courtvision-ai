@@ -172,6 +172,9 @@ Completed in this continuation:
     rejection, and a host-side iOS contract checker that validates Swift enum
     raw values against `contracts/websocket-envelope.schema.json` before
     simulator tests run in CI.
+48. Hardened the iOS GitHub Actions job to create and boot an iPhone 17 / iOS
+    26.5 simulator, then target it by UDID instead of assuming the runner image
+    has a pre-created named simulator.
 
 ## Important Product Boundaries
 
@@ -265,3 +268,6 @@ solely to increase contribution activity.
   runtime. A prior attempt to read the shared WebSocket schema directly inside
   XCTest hung under the simulator; host-side contract validation is the stable
   path.
+- The `macos-26` GitHub runner can have the iOS 26.5 runtime and iPhone 17
+  device type installed without a pre-created `iPhone 17` simulator. Create a
+  simulator with `xcrun simctl create` in CI and pass its UDID to `xcodebuild`.
