@@ -56,7 +56,7 @@ jobs:
       - run: pnpm --filter @courtvision/web lint
       - run: pnpm --filter @courtvision/web test
       - run: pnpm --filter @courtvision/web generate:contracts:file
-      - run: git diff --exit-code apps/web/src/generated/openapi.ts
+      - run: git diff --exit-code apps/web/src/generated/openapi.ts apps/web/src/generated/websocket-envelope.ts
       - run: pnpm --filter @courtvision/web build
 
   e2e:

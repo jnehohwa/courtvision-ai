@@ -12,6 +12,7 @@ from redis.asyncio.client import PubSub
 from courtvision.broadcast import (
     ACKNOWLEDGE_REPLAY_SCRIPT,
     EVENT_CHANNEL,
+    EventBus,
     REPLAY_LOCK_PREFIX,
     REPLAY_PROCESSING_QUEUE,
     REPLAY_QUEUE,
@@ -70,7 +71,7 @@ async def stop_worker(process: asyncio.subprocess.Process) -> None:
         await process.wait()
 
 
-async def test_worker_restart_recovers_claimed_replay(client):
+async def test_worker_restart_recovers_claimed_replay(database):
     redis = Redis.from_url(
         os.environ.get("COURTVISION_REDIS_URL", "redis://127.0.0.1:6379/0"),
         decode_responses=True,
@@ -89,12 +90,12 @@ async def test_worker_restart_recovers_claimed_replay(client):
         await pubsub.get_message(timeout=1)
 
         first_worker = await start_worker()
-        response = client.post(
-            f"/internal/replays/{GAME_ID}/start",
-            headers={"X-Internal-Key": "local-development-key"},
-        )
-        assert response.status_code == 200
-        assert response.json()["status"] == "started"
+        queue_bus = EventBus()
+        try:
+            assert await queue_bus.start(subscribe=False)
+            assert await queue_bus.enqueue_replay(GAME_ID, tick_seconds=0.05)
+        finally:
+            await queue_bus.stop()
 
         first_sequences: list[int] = []
         while max(first_sequences, default=0) < 5:

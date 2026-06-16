@@ -121,7 +121,7 @@ export function useLiveGame(gameId: string) {
         if (envelope.type !== "play_added" && envelope.type !== "play_corrected") {
           return;
         }
-        const point = toTimelinePoint(envelope.payload as PlayPayload);
+        const point = toTimelinePoint(envelope.payload);
         lastSeenSequence.current = Math.max(lastSeenSequence.current, point.sequence);
         setTimeline((current) => {
           const withoutRevision = current.filter(

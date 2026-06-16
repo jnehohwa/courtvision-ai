@@ -11,3 +11,7 @@ API is running.
 ```bash
 pnpm generate:contracts
 ```
+
+The web workspace also generates `src/generated/websocket-envelope.ts` from the
+shared WebSocket schema. CI regenerates both OpenAPI and WebSocket artifacts and
+fails if either generated client contract drifts.

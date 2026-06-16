@@ -9,8 +9,11 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "generate:contracts": "openapi-typescript http://localhost:8000/openapi.json -o src/generated/openapi.ts",
-    "generate:contracts:file": "openapi-typescript ../../contracts/openapi.json -o src/generated/openapi.ts"
+    "generate:contracts": "openapi-typescript http://localhost:8000/openapi.json -o src/generated/openapi.ts && json2ts -i ../../contracts/websocket-envelope.schema.json -o src/generated/websocket-envelope.ts --unreachableDefinitions",
+    "generate:contracts:file": "openapi-typescript ../../contracts/openapi.json -o src/generated/openapi.ts && json2ts -i ../../contracts/websocket-envelope.schema.json -o src/generated/websocket-envelope.ts --unreachableDefinitions",
+    "generate:openapi": "openapi-typescript http://localhost:8000/openapi.json -o src/generated/openapi.ts",
+    "generate:openapi:file": "openapi-typescript ../../contracts/openapi.json -o src/generated/openapi.ts",
+    "generate:websocket:file": "json2ts -i ../../contracts/websocket-envelope.schema.json -o src/generated/websocket-envelope.ts --unreachableDefinitions"
   },
   "dependencies": {
     "lucide-react": "1.18.0",
@@ -29,6 +32,7 @@
     "eslint": "9.39.2",
     "eslint-config-next": "16.2.9",
     "jsdom": "27.2.0",
+    "json-schema-to-typescript": "^15.0.4",
     "openapi-typescript": "7.10.1",
     "typescript": "6.0.3",
     "vitest": "4.1.8"

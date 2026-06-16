@@ -1,3 +1,9 @@
+import type {
+  CourtVisionWebSocketEnvelope,
+  PlayPayload as GeneratedPlayPayload,
+  StatusPayload,
+} from "@/generated/websocket-envelope";
+
 export type SourceStatus = "replay" | "delayed" | "stale" | "unavailable";
 
 export interface Team {
@@ -57,40 +63,18 @@ export interface LiveSnapshot {
   snapshot_generated_at: string;
 }
 
-export interface PlayPayload {
-  sequence: number;
-  source_event_id: string;
-  revision: number;
-  event_type: string;
-  description: string;
-  period: number;
-  clock_seconds: number;
-  home_score: number;
-  away_score: number;
-  possession_team_id: string | null;
-  home_fouls: number;
-  away_fouls: number;
-  x: number | null;
-  y: number | null;
-  shot_value: number | null;
-  home_probability: number;
-}
+export type PlayPayload = GeneratedPlayPayload;
 
-export interface WebSocketEnvelope {
-  type:
-    | "snapshot"
-    | "play_added"
-    | "play_corrected"
-    | "prediction_updated"
-    | "source_status"
-    | "heartbeat"
-    | "replay_completed";
-  schema_version: "1.0";
-  game_id: string;
-  sequence: number;
-  occurred_at: string;
-  ingested_at: string;
-  source_status: SourceStatus;
-  model_version: string | null;
-  payload: PlayPayload | Record<string, unknown>;
-}
+export type WebSocketEnvelope =
+  | (CourtVisionWebSocketEnvelope & {
+      type: "play_added" | "play_corrected";
+      payload: PlayPayload;
+    })
+  | (CourtVisionWebSocketEnvelope & {
+      type: "source_status" | "heartbeat" | "replay_completed";
+      payload: StatusPayload;
+    })
+  | (CourtVisionWebSocketEnvelope & {
+      type: "snapshot" | "prediction_updated";
+      payload: Record<string, unknown>;
+    });

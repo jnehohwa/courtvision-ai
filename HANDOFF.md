@@ -160,6 +160,13 @@ Completed in this continuation:
     payloads and added backend contract tests that validate actual presenter
     output for `play_added`, `play_corrected`, `source_status`, `heartbeat`,
     and `replay_completed` frames.
+45. Changed the real-Redis worker restart test to enqueue through an actual
+    Redis-backed `EventBus` instead of the API `TestClient`, removing ambiguity
+    with the API's legitimate in-process fallback path.
+46. Added generated web WebSocket types from
+    `contracts/websocket-envelope.schema.json`, replaced the hand-written web
+    `PlayPayload` copy, and extended CI drift checks to cover the generated
+    WebSocket contract.
 
 ## Important Product Boundaries
 
@@ -202,10 +209,10 @@ Completed in this continuation:
 5. Run the native checks with XcodeBuildMCP using the saved `CourtVision`
    project, `CourtVision` scheme, and iPhone 17 / iOS 26.5 simulator defaults.
 
-6. The next valuable increment is client contract automation. Generate or
-   validate client-facing WebSocket types from `contracts/websocket-envelope.schema.json`
-   so the Next.js and SwiftUI clients cannot drift from the backend envelope
-   contract.
+6. The next valuable increment is native contract automation. Generate or
+   validate Swift-facing WebSocket and REST DTOs from the shared contracts so
+   the SwiftUI client cannot drift from the backend envelope and OpenAPI
+   contracts.
 
 ## Checkpoint Workflow
 
