@@ -17,6 +17,7 @@ CourtVision AI has a verified replay-first vertical slice:
 - Native SwiftUI client
 - Shared OpenAPI and WebSocket contracts
 - Docker Compose, Render configuration, and CI
+- Vercel-ready web project config, but no authenticated Vercel deployment yet
 
 ## Verification Baseline
 
@@ -175,6 +176,9 @@ Completed in this continuation:
 48. Hardened the iOS GitHub Actions job to create an iPhone 17 / iOS 26.5
     simulator, then target it by UDID instead of assuming the runner image has
     a pre-created named simulator.
+49. Added Vercel-ready web project defaults and deployment notes. The GitHub
+    repository currently has no Vercel deployment records or Vercel check-runs;
+    actual deployment still requires linking an authenticated Vercel project.
 
 ## Important Product Boundaries
 
@@ -229,6 +233,11 @@ Completed in this continuation:
 6. The next valuable increment is Swift REST contract automation. Generate or
    validate Swift-facing REST DTOs from `contracts/openapi.json` so the SwiftUI
    client cannot drift from the backend REST contract.
+
+7. If deploying next, link Vercel with `apps/web` as the project root and set
+   the environment variables in `docs/deployment.md`. Do not mark the web app
+   deployed until Vercel returns a production URL and GitHub/Vercel deployment
+   status confirms it.
 
 ## Checkpoint Workflow
 

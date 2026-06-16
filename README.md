@@ -75,6 +75,13 @@ plus WebSocket replay on desktop and mobile. Recovery cases force a mid-replay
 disconnect, confirm sequence-based catch-up, exhaust bounded reconnects, enter
 REST polling, and preserve the last valid snapshot through a simulated `503`.
 
+## Deployment
+
+The web app is ready to link as a Vercel project with `apps/web` as the project
+root, but it has not been deployed yet. See `docs/deployment.md` for the Vercel
+and Render environment variables, CORS coupling, and the current deployment
+status.
+
 ## Model promotion
 
 The API ships deterministic logistic and shot-location benchmarks so replay
