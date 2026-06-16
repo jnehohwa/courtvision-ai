@@ -16,3 +16,10 @@ The game room fetches an authoritative snapshot before opening its WebSocket,
 reconnects from the last observed sequence with bounded exponential backoff,
 and switches to periodic REST snapshots after repeated stream failures. Failed
 polls retain the last valid timeline and surface the degraded state inline.
+
+From the repository root, run the shared WebSocket contract check before
+simulator tests:
+
+```bash
+python3 tools/check_ios_websocket_contract.py
+```

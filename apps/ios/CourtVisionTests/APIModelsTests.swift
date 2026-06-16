@@ -41,7 +41,31 @@ final class APIModelsTests: XCTestCase {
         )
 
         XCTAssertEqual(envelope.schemaVersion, "1.0")
+        XCTAssertEqual(envelope.type, .playAdded)
         XCTAssertEqual(envelope.payload?.timelinePoint.homeScore, 2)
+    }
+
+    func testEnvelopeRejectsUnknownEventType() {
+        let json = """
+        {
+          "type": "not_a_contract_event",
+          "schema_version": "1.0",
+          "game_id": "game-1",
+          "sequence": 2,
+          "occurred_at": "2026-06-14T12:00:00Z",
+          "ingested_at": "2026-06-14T12:00:08Z",
+          "source_status": "replay",
+          "model_version": null,
+          "payload": null
+        }
+        """
+
+        XCTAssertThrowsError(
+            try APIClient.makeDecoder().decode(
+                WebSocketEnvelope.self,
+                from: Data(json.utf8)
+            )
+        )
     }
 
     func testClockFormatting() {

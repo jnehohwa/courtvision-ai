@@ -15,3 +15,7 @@ pnpm generate:contracts
 The web workspace also generates `src/generated/websocket-envelope.ts` from the
 shared WebSocket schema. CI regenerates both OpenAPI and WebSocket artifacts and
 fails if either generated client contract drifts.
+
+The iOS client keeps Swift enums for WebSocket event types and source statuses.
+CI runs `python3 tools/check_ios_websocket_contract.py` to validate those enum
+raw values against this shared schema before simulator tests run.

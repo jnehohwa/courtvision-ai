@@ -241,7 +241,7 @@ final class GameDetailModelTests: XCTestCase {
 
     private func makeEnvelope(sequence: Int) -> WebSocketEnvelope {
         WebSocketEnvelope(
-            type: "play_added",
+            type: .playAdded,
             schemaVersion: "1.0",
             gameId: "game-1",
             sequence: sequence,

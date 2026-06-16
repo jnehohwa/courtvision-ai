@@ -1,10 +1,20 @@
 import Foundation
 
-enum SourceStatus: String, Codable, Sendable {
+enum SourceStatus: String, CaseIterable, Codable, Sendable {
     case replay
     case delayed
     case stale
     case unavailable
+}
+
+enum WebSocketEventType: String, CaseIterable, Codable, Sendable {
+    case snapshot
+    case playAdded = "play_added"
+    case playCorrected = "play_corrected"
+    case predictionUpdated = "prediction_updated"
+    case sourceStatus = "source_status"
+    case heartbeat
+    case replayCompleted = "replay_completed"
 }
 
 struct Team: Codable, Hashable, Identifiable, Sendable {
@@ -107,7 +117,7 @@ struct PlayPayload: Codable, Sendable {
 }
 
 struct WebSocketEnvelope: Codable, Sendable {
-    let type: String
+    let type: WebSocketEventType
     let schemaVersion: String
     let gameId: String
     let sequence: Int

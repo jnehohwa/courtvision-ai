@@ -29,7 +29,8 @@ The latest complete local verification passed:
 - Full-stack web acceptance: 8 desktop/mobile Playwright cases using a real
   Alembic-seeded API, REST snapshot, game WebSocket, 20 replay events, replay
   completion, disconnect/resume, missed-event recovery, and REST fallback
-- Swift: simulator build/run with no diagnostics and 7 XCTest cases
+- Swift: simulator build/run with no diagnostics, shared WebSocket enum
+  contract validation, and 8 XCTest cases
 - Native acceptance: populated fixture dashboard, game room, model/freshness
   metadata, win-probability chart, shot map selection, and timeline; model
   tests cover sequence resume and last-snapshot retention
@@ -167,6 +168,10 @@ Completed in this continuation:
     `contracts/websocket-envelope.schema.json`, replaced the hand-written web
     `PlayPayload` copy, and extended CI drift checks to cover the generated
     WebSocket contract.
+47. Added typed Swift WebSocket event enums, XCTest coverage for unknown event
+    rejection, and a host-side iOS contract checker that validates Swift enum
+    raw values against `contracts/websocket-envelope.schema.json` before
+    simulator tests run in CI.
 
 ## Important Product Boundaries
 
@@ -206,13 +211,21 @@ Completed in this continuation:
    ./node_modules/.bin/next build
    ```
 
-5. Run the native checks with XcodeBuildMCP using the saved `CourtVision`
-   project, `CourtVision` scheme, and iPhone 17 / iOS 26.5 simulator defaults.
+5. Run the native checks with:
 
-6. The next valuable increment is native contract automation. Generate or
-   validate Swift-facing WebSocket and REST DTOs from the shared contracts so
-   the SwiftUI client cannot drift from the backend envelope and OpenAPI
-   contracts.
+   ```bash
+   python3 tools/check_ios_websocket_contract.py
+   ```
+
+   Then use XcodeBuildMCP with the saved `CourtVision` project,
+   `CourtVision` scheme, and iPhone 17 / iOS 26.5 simulator defaults.
+   If XcodeBuildMCP times out in `test-without-building`, kill the stale
+   child `xcodebuild` process and run a fresh `xcodebuild test` or
+   `xcodebuild clean test` with the same simulator destination.
+
+6. The next valuable increment is Swift REST contract automation. Generate or
+   validate Swift-facing REST DTOs from `contracts/openapi.json` so the SwiftUI
+   client cannot drift from the backend REST contract.
 
 ## Checkpoint Workflow
 
@@ -248,3 +261,7 @@ solely to increase contribution activity.
   was cancelled after sustained CDN throughput of roughly 34 kB/s. CI cache
   invalidation is explicitly keyed from the workspace dependency manifests in
   the meantime.
+- Simulator tests should not read repository files through `#filePath` at
+  runtime. A prior attempt to read the shared WebSocket schema directly inside
+  XCTest hung under the simulator; host-side contract validation is the stable
+  path.
