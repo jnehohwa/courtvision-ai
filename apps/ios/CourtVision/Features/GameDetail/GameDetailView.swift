@@ -24,12 +24,6 @@ struct GameDetailView: View {
                     connectionMessage: model.connectionMessage
                 )
 
-                ProbabilityTimeline(
-                    points: model.timeline,
-                    selectedPoint: model.selectedPoint,
-                    onSelect: model.select
-                )
-
                 ShotCourtView(
                     points: model.timeline,
                     selectedPoint: model.selectedPoint,
@@ -40,6 +34,12 @@ struct GameDetailView: View {
                     onSelect: model.select
                 )
 
+                ProbabilityTimeline(
+                    points: model.timeline,
+                    selectedPoint: model.selectedPoint,
+                    onSelect: model.select
+                )
+
                 MomentumView(
                     points: Array(model.timeline.suffix(12)),
                     selectedPoint: model.selectedPoint,
@@ -47,6 +47,7 @@ struct GameDetailView: View {
                 )
             }
             .padding()
+            .padding(.bottom, 96)
         }
         .background(CourtVisionTheme.background)
         .navigationTitle("\(game.homeTeam.abbreviation) vs \(game.awayTeam.abbreviation)")

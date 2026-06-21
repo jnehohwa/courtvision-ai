@@ -197,6 +197,14 @@ Completed in this continuation:
     `URLProtocol` to prove `shotQuality` sends `POST /api/v1/shot-quality` as
     snake_case JSON through the production `URLSession` boundary and decodes
     the backend response shape.
+54. Completed the iOS visual acceptance pass against the local fixture API.
+    The selected-shot quality panel was promoted above the court canvas and
+    the game room gained bottom scroll padding so the panel is visible above
+    the tab bar. XcodeBuildMCP semantic snapshot `seq=16` confirmed rendered
+    text for `xPTS`, `MAKE`, `QUALITY`, `1,41`, `71%`, `High`, the
+    shooter-neutral definition, `shot-quality-baseline-1.0`, and
+    `no defender tracking`; a simulator screenshot was captured and visually
+    inspected for the same card.
 
 ## Important Product Boundaries
 
@@ -249,10 +257,10 @@ Completed in this continuation:
    child `xcodebuild` process and run a fresh `xcodebuild test` or
    `xcodebuild clean test` with the same simulator destination.
 
-6. The next valuable increment is a small iOS visual acceptance pass for the
-   selected-shot quality panel: run the fixture API, open the game room in the
-   simulator, select a shot on the court, and capture/inspect the rendered
-   xPTS, make probability, model version, and no-defender-tracking label.
+6. The next valuable native increment is to make the visual acceptance durable:
+   either add a lightweight XCTest/UI harness for the selected-shot quality
+   panel, or keep the MCP-run screenshot procedure documented as a manual
+   release gate if UI automation remains too brittle for CI.
 
 7. If deploying next, link Vercel with `apps/web` as the project root and set
    the environment variables in `docs/deployment.md`. Do not mark the web app

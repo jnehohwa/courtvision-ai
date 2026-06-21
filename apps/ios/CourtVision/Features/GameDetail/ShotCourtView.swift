@@ -18,6 +18,10 @@ struct ShotCourtView: View {
             Text("Shot Map")
                 .font(.headline)
 
+            if let selectedPoint, selectedPoint.x != nil {
+                selectedShotSummary(for: selectedPoint)
+            }
+
             GeometryReader { proxy in
                 ZStack {
                     CourtLines()
@@ -44,25 +48,6 @@ struct ShotCourtView: View {
                 }
             }
             .aspectRatio(1.06, contentMode: .fit)
-
-            if let selectedPoint, selectedPoint.x != nil {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(selectedPoint.description)
-                        .font(.subheadline.weight(.semibold))
-                    Text("Q\(selectedPoint.period) \(ScoreboardView.clock(selectedPoint.clockSeconds))")
-                        .font(.caption.monospaced())
-                        .foregroundStyle(CourtVisionTheme.muted)
-
-                    Divider()
-                        .overlay(CourtVisionTheme.border)
-                        .padding(.vertical, 4)
-
-                    shotQualitySummary
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(10)
-                .background(CourtVisionTheme.raised)
-            }
         }
         .courtVisionPanel()
     }
@@ -71,6 +56,25 @@ struct ShotCourtView: View {
         let x = size.width / 2 + CGFloat(point.x ?? 0) / 50 * size.width * 0.9
         let y = size.height * 0.08 + CGFloat(point.y ?? 0) / 47 * size.height * 0.82
         return CGPoint(x: x, y: y)
+    }
+
+    private func selectedShotSummary(for point: TimelinePoint) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(point.description)
+                .font(.subheadline.weight(.semibold))
+            Text("Q\(point.period) \(ScoreboardView.clock(point.clockSeconds))")
+                .font(.caption.monospaced())
+                .foregroundStyle(CourtVisionTheme.muted)
+
+            Divider()
+                .overlay(CourtVisionTheme.border)
+                .padding(.vertical, 4)
+
+            shotQualitySummary
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(CourtVisionTheme.raised)
     }
 
     @ViewBuilder
