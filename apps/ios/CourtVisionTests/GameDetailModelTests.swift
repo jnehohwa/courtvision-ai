@@ -7,6 +7,11 @@ private enum RecoveryTestError: Error {
     case sourceUnavailable
 }
 
+private struct ShotQualityCapture: Sendable {
+    let playerID: String
+    let attempts: [ShotAttemptRequest]
+}
+
 private actor ScriptedSnapshotProvider: LiveSnapshotProviding {
     private let initialSnapshot: LiveSnapshot
     private let failAfterInitial: Bool
@@ -27,6 +32,27 @@ private actor ScriptedSnapshotProvider: LiveSnapshotProviding {
 
     func calls() -> Int {
         callCount
+    }
+}
+
+private actor ScriptedShotQualityProvider: ShotQualityProviding {
+    private let response: ShotQualityResponse
+    private var captures: [ShotQualityCapture] = []
+
+    init(response: ShotQualityResponse) {
+        self.response = response
+    }
+
+    func shotQuality(
+        playerID: String,
+        attempts: [ShotAttemptRequest]
+    ) async throws -> ShotQualityResponse {
+        captures.append(ShotQualityCapture(playerID: playerID, attempts: attempts))
+        return response
+    }
+
+    func requests() -> [ShotQualityCapture] {
+        captures
     }
 }
 
@@ -126,6 +152,108 @@ final class GameDetailModelTests: XCTestCase {
         loadTask.cancel()
         await model.disconnect()
         await loadTask.value
+    }
+
+    func testSelectingShotLoadsShotQualityContext() async throws {
+        let snapshot = makeSnapshot(latestSequence: 4, timeline: [makePoint(sequence: 4)])
+        let provider = ScriptedSnapshotProvider(initialSnapshot: snapshot)
+        let shotQualityProvider = ScriptedShotQualityProvider(
+            response: ShotQualityResponse(
+                playerId: "unattributed-live-shot",
+                definition: "Shooter-neutral expected field-goal probability.",
+                modelVersion: "shot-quality-baseline-1.0",
+                attempts: [
+                    ShotQualityResult(
+                        x: 1,
+                        y: 3,
+                        distanceFeet: 4.2,
+                        angleDegrees: 18.0,
+                        shotValue: 2,
+                        makeProbability: 0.62,
+                        expectedPoints: 1.24,
+                        qualityLabel: "High"
+                    )
+                ]
+            )
+        )
+        let stream = ScriptedGameStream(
+            scripts: [],
+            defaultScript: .init(envelopes: [], failure: nil, holdOpen: true)
+        )
+        let model = GameDetailModel(
+            game: snapshot.game,
+            snapshotProvider: provider,
+            shotQualityProvider: shotQualityProvider,
+            stream: stream,
+            recoveryPolicy: testPolicy,
+            sleep: { _ in await Task.yield() }
+        )
+
+        model.select(makePoint(sequence: 8))
+        try await waitUntil { model.selectedShotQuality?.expectedPoints == 1.24 }
+        let requests = await shotQualityProvider.requests()
+        let attempt = try XCTUnwrap(requests.first?.attempts.first)
+
+        XCTAssertEqual(requests.first?.playerID, "unattributed-live-shot")
+        XCTAssertEqual(attempt.x, 1)
+        XCTAssertEqual(attempt.y, 3)
+        XCTAssertEqual(attempt.shotValue, 2)
+        XCTAssertEqual(attempt.period, 4)
+        XCTAssertEqual(attempt.gameClockSeconds, 192)
+        XCTAssertEqual(attempt.scoreDifferential, 3)
+        XCTAssertEqual(model.shotQualityState, .loaded)
+        XCTAssertEqual(model.shotQualityModelVersion, "shot-quality-baseline-1.0")
+
+        await model.disconnect()
+    }
+
+    func testSelectingNonShotDoesNotLoadShotQuality() async throws {
+        let snapshot = makeSnapshot(latestSequence: 4, timeline: [makePoint(sequence: 4)])
+        let provider = ScriptedSnapshotProvider(initialSnapshot: snapshot)
+        let shotQualityProvider = ScriptedShotQualityProvider(
+            response: ShotQualityResponse(
+                playerId: "unattributed-live-shot",
+                definition: "Shooter-neutral expected field-goal probability.",
+                modelVersion: "shot-quality-baseline-1.0",
+                attempts: []
+            )
+        )
+        let stream = ScriptedGameStream(
+            scripts: [],
+            defaultScript: .init(envelopes: [], failure: nil, holdOpen: true)
+        )
+        let model = GameDetailModel(
+            game: snapshot.game,
+            snapshotProvider: provider,
+            shotQualityProvider: shotQualityProvider,
+            stream: stream,
+            recoveryPolicy: testPolicy,
+            sleep: { _ in await Task.yield() }
+        )
+
+        model.select(
+            TimelinePoint(
+                sequence: 9,
+                period: 4,
+                clockSeconds: 180,
+                homeProbability: 0.64,
+                description: "Turnover",
+                eventType: "turnover",
+                homeScore: 102,
+                awayScore: 99,
+                x: nil,
+                y: nil,
+                shotValue: nil
+            )
+        )
+        try await Task.sleep(for: .milliseconds(10))
+        let requests = await shotQualityProvider.requests()
+
+        XCTAssertTrue(requests.isEmpty)
+        XCTAssertEqual(model.shotQualityState, .unavailable)
+        XCTAssertNil(model.selectedShotQuality)
+
+        await model.disconnect()
     }
 
     func testPollingPreservesLastSnapshotWhenSourceIsUnavailable() async throws {

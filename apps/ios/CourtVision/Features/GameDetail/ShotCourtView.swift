@@ -3,6 +3,10 @@ import SwiftUI
 struct ShotCourtView: View {
     let points: [TimelinePoint]
     let selectedPoint: TimelinePoint?
+    let shotQuality: ShotQualityResult?
+    let shotQualityState: ShotQualityLoadState
+    let shotQualityMessage: String?
+    let shotQualityModelVersion: String
     let onSelect: (TimelinePoint) -> Void
 
     private var shots: [TimelinePoint] {
@@ -48,6 +52,12 @@ struct ShotCourtView: View {
                     Text("Q\(selectedPoint.period) \(ScoreboardView.clock(selectedPoint.clockSeconds))")
                         .font(.caption.monospaced())
                         .foregroundStyle(CourtVisionTheme.muted)
+
+                    Divider()
+                        .overlay(CourtVisionTheme.border)
+                        .padding(.vertical, 4)
+
+                    shotQualitySummary
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(10)
@@ -61,6 +71,65 @@ struct ShotCourtView: View {
         let x = size.width / 2 + CGFloat(point.x ?? 0) / 50 * size.width * 0.9
         let y = size.height * 0.08 + CGFloat(point.y ?? 0) / 47 * size.height * 0.82
         return CGPoint(x: x, y: y)
+    }
+
+    @ViewBuilder
+    private var shotQualitySummary: some View {
+        switch shotQualityState {
+        case .loading:
+            Label("Calculating shooter-neutral shot quality...", systemImage: "chart.xyaxis.line")
+                .font(.caption)
+                .foregroundStyle(CourtVisionTheme.muted)
+        case .loaded:
+            if let shotQuality {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 12) {
+                        metric(
+                            title: "xPTS",
+                            value: shotQuality.expectedPoints.formatted(
+                                .number.precision(.fractionLength(2))
+                            )
+                        )
+                        metric(
+                            title: "MAKE",
+                            value: shotQuality.makeProbability.formatted(
+                                .percent.precision(.fractionLength(0))
+                            )
+                        )
+                        metric(title: "QUALITY", value: shotQuality.qualityLabel)
+                    }
+                    Text(shotQualityMessage ?? "Shooter-neutral location and game-context model.")
+                        .font(.caption2)
+                        .foregroundStyle(CourtVisionTheme.muted)
+                    Text("\(shotQualityModelVersion) | no defender tracking")
+                        .font(.caption2.monospaced())
+                        .foregroundStyle(CourtVisionTheme.muted)
+                }
+            }
+        case .failed:
+            Label(
+                shotQualityMessage ?? "Shot quality is temporarily unavailable.",
+                systemImage: "exclamationmark.triangle"
+            )
+            .font(.caption)
+            .foregroundStyle(CourtVisionTheme.away)
+        case .unavailable:
+            Text(shotQualityMessage ?? "Shot quality is unavailable for this event.")
+                .font(.caption)
+                .foregroundStyle(CourtVisionTheme.muted)
+        }
+    }
+
+    private func metric(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.caption2.monospaced())
+                .foregroundStyle(CourtVisionTheme.muted)
+            Text(value)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

@@ -31,7 +31,7 @@ The latest complete local verification passed:
   Alembic-seeded API, REST snapshot, game WebSocket, 20 replay events, replay
   completion, disconnect/resume, missed-event recovery, and REST fallback
 - Swift: simulator build/run with no diagnostics, shared REST DTO and
-  WebSocket enum contract validation, and 11 XCTest cases
+  WebSocket enum contract validation, and 13 XCTest cases
 - Native acceptance: populated fixture dashboard, game room, model/freshness
   metadata, win-probability chart, shot map selection, and timeline; model
   tests cover sequence resume and last-snapshot retention
@@ -187,6 +187,12 @@ Completed in this continuation:
     `SourceStatus` values, public APIClient method coverage, snake_case
     encoder/decoder mapping, and the native private-command boundary against
     `contracts/openapi.json`; wired it into CI before simulator tests.
+52. Wired the Swift shot-quality REST boundary into the selected-shot court
+    analytics panel. The model now requests shooter-neutral xPTS only for
+    events with coordinates and shot value, derives score differential from
+    the live timeline state, cancels stale requests on selection changes, and
+    displays make probability, expected points, quality label, model version,
+    and explicit no-defender-tracking copy.
 
 ## Important Product Boundaries
 
@@ -239,10 +245,10 @@ Completed in this continuation:
    child `xcodebuild` process and run a fresh `xcodebuild test` or
    `xcodebuild clean test` with the same simulator destination.
 
-6. The next valuable native increment is to use the new Swift `shotQuality`
-   REST client method from the selected-shot court analytics panel, displaying
-   expected points, make probability, quality label, and the model/freshness
-   metadata without claiming defender-aware quality.
+6. The next valuable native increment is a runtime APIClient integration test
+   with a custom `URLProtocol` proving the Swift client sends
+   `POST /api/v1/shot-quality` as snake_case JSON and decodes the response
+   through the same production `URLSession` boundary used by the app.
 
 7. If deploying next, link Vercel with `apps/web` as the project root and set
    the environment variables in `docs/deployment.md`. Do not mark the web app

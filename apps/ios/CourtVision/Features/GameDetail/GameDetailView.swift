@@ -33,6 +33,10 @@ struct GameDetailView: View {
                 ShotCourtView(
                     points: model.timeline,
                     selectedPoint: model.selectedPoint,
+                    shotQuality: model.selectedShotQuality,
+                    shotQualityState: model.shotQualityState,
+                    shotQualityMessage: model.shotQualityMessage,
+                    shotQualityModelVersion: model.shotQualityModelVersion,
                     onSelect: model.select
                 )
 

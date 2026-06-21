@@ -16,6 +16,9 @@ The game room fetches an authoritative snapshot before opening its WebSocket,
 reconnects from the last observed sequence with bounded exponential backoff,
 and switches to periodic REST snapshots after repeated stream failures. Failed
 polls retain the last valid timeline and surface the degraded state inline.
+Selecting a shot on the court requests shooter-neutral shot quality from the
+REST API and displays xPTS, make probability, model version, and an explicit
+no-defender-tracking label.
 
 From the repository root, run the shared REST and WebSocket contract checks
 before simulator tests:
