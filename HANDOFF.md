@@ -31,7 +31,7 @@ The latest complete local verification passed:
   Alembic-seeded API, REST snapshot, game WebSocket, 20 replay events, replay
   completion, disconnect/resume, missed-event recovery, and REST fallback
 - Swift: simulator build/run with no diagnostics, shared REST DTO and
-  WebSocket enum contract validation, and 13 XCTest cases
+  WebSocket enum contract validation, and 14 XCTest cases
 - Native acceptance: populated fixture dashboard, game room, model/freshness
   metadata, win-probability chart, shot map selection, and timeline; model
   tests cover sequence resume and last-snapshot retention
@@ -193,6 +193,10 @@ Completed in this continuation:
     the live timeline state, cancels stale requests on selection changes, and
     displays make probability, expected points, quality label, model version,
     and explicit no-defender-tracking copy.
+53. Added a runtime Swift `APIClient` integration test using a custom
+    `URLProtocol` to prove `shotQuality` sends `POST /api/v1/shot-quality` as
+    snake_case JSON through the production `URLSession` boundary and decodes
+    the backend response shape.
 
 ## Important Product Boundaries
 
@@ -245,10 +249,10 @@ Completed in this continuation:
    child `xcodebuild` process and run a fresh `xcodebuild test` or
    `xcodebuild clean test` with the same simulator destination.
 
-6. The next valuable native increment is a runtime APIClient integration test
-   with a custom `URLProtocol` proving the Swift client sends
-   `POST /api/v1/shot-quality` as snake_case JSON and decodes the response
-   through the same production `URLSession` boundary used by the app.
+6. The next valuable increment is a small iOS visual acceptance pass for the
+   selected-shot quality panel: run the fixture API, open the game room in the
+   simulator, select a shot on the court, and capture/inspect the rendered
+   xPTS, make probability, model version, and no-defender-tracking label.
 
 7. If deploying next, link Vercel with `apps/web` as the project root and set
    the environment variables in `docs/deployment.md`. Do not mark the web app

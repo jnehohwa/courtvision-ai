@@ -1,6 +1,71 @@
 import XCTest
 @testable import CourtVision
 
+private struct CapturedShotQualityRequest: Sendable {
+    let method: String?
+    let path: String?
+    let contentType: String?
+    let playerId: String?
+    let attemptCount: Int
+    let shotValue: Int?
+    let gameClockSeconds: Int?
+    let scoreDifferential: Int?
+}
+
+private final class RequestCaptureBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: CapturedShotQualityRequest?
+
+    func set(_ value: CapturedShotQualityRequest) {
+        lock.lock()
+        defer { lock.unlock() }
+        self.value = value
+    }
+
+    func get() -> CapturedShotQualityRequest? {
+        lock.lock()
+        defer { lock.unlock() }
+        return value
+    }
+}
+
+private enum URLProtocolTestError: Error {
+    case missingHandler
+    case missingBody
+    case invalidBody
+    case invalidURL
+}
+
+private final class ShotQualityURLProtocol: URLProtocol {
+    nonisolated(unsafe) static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
+
+    override class func canInit(with request: URLRequest) -> Bool {
+        true
+    }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
+
+    override func startLoading() {
+        guard let handler = Self.requestHandler else {
+            client?.urlProtocol(self, didFailWithError: URLProtocolTestError.missingHandler)
+            return
+        }
+
+        do {
+            let (response, data) = try handler(request)
+            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: data)
+            client?.urlProtocolDidFinishLoading(self)
+        } catch {
+            client?.urlProtocol(self, didFailWithError: error)
+        }
+    }
+
+    override func stopLoading() {}
+}
+
 @MainActor
 final class APIModelsTests: XCTestCase {
     func testEnvelopeDecodesSnakeCasePayload() throws {
@@ -234,5 +299,125 @@ final class APIModelsTests: XCTestCase {
 
         XCTAssertEqual(response.playerId, "player-1")
         XCTAssertEqual(response.attempts.first?.expectedPoints, 1.11)
+    }
+
+    func testAPIClientShotQualityPostsSnakeCaseAndDecodesResponse() async throws {
+        let captureBox = RequestCaptureBox()
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [ShotQualityURLProtocol.self]
+        let session = URLSession(configuration: configuration)
+        defer {
+            ShotQualityURLProtocol.requestHandler = nil
+            session.invalidateAndCancel()
+        }
+
+        ShotQualityURLProtocol.requestHandler = { request in
+            let body = try Self.requestBodyData(from: request)
+            let object = try XCTUnwrap(
+                JSONSerialization.jsonObject(with: body) as? [String: Any]
+            )
+            let attempts = try XCTUnwrap(object["attempts"] as? [[String: Any]])
+            let firstAttempt = try XCTUnwrap(attempts.first)
+            captureBox.set(
+                CapturedShotQualityRequest(
+                    method: request.httpMethod,
+                    path: request.url?.path,
+                    contentType: request.value(forHTTPHeaderField: "Content-Type"),
+                    playerId: object["player_id"] as? String,
+                    attemptCount: attempts.count,
+                    shotValue: firstAttempt["shot_value"] as? Int,
+                    gameClockSeconds: firstAttempt["game_clock_seconds"] as? Int,
+                    scoreDifferential: firstAttempt["score_differential"] as? Int
+                )
+            )
+            guard let url = request.url else {
+                throw URLProtocolTestError.invalidURL
+            }
+            let response = try XCTUnwrap(
+                HTTPURLResponse(
+                    url: url,
+                    statusCode: 200,
+                    httpVersion: nil,
+                    headerFields: ["Content-Type": "application/json"]
+                )
+            )
+            let responseBody = """
+            {
+              "player_id": "player-9",
+              "definition": "Shooter-neutral expected field-goal probability.",
+              "model_version": "shot-quality-baseline-1.0",
+              "attempts": [{
+                "x": 7.5,
+                "y": 18.0,
+                "distance_feet": 19.5,
+                "angle_degrees": 24.0,
+                "shot_value": 2,
+                "make_probability": 0.51,
+                "expected_points": 1.02,
+                "quality_label": "Average"
+              }]
+            }
+            """
+            return (response, Data(responseBody.utf8))
+        }
+
+        let client = APIClient(
+            baseURL: URL(string: "https://courtvision.test")!,
+            session: session
+        )
+        let response = try await client.shotQuality(
+            playerID: "player-9",
+            attempts: [
+                ShotAttemptRequest(
+                    x: 7.5,
+                    y: 18.0,
+                    shotValue: 2,
+                    period: 3,
+                    gameClockSeconds: 221,
+                    scoreDifferential: 6
+                )
+            ]
+        )
+        let captured = try XCTUnwrap(captureBox.get())
+
+        XCTAssertEqual(captured.method, "POST")
+        XCTAssertEqual(captured.path, "/api/v1/shot-quality")
+        XCTAssertEqual(captured.contentType, "application/json")
+        XCTAssertEqual(captured.playerId, "player-9")
+        XCTAssertEqual(captured.attemptCount, 1)
+        XCTAssertEqual(captured.shotValue, 2)
+        XCTAssertEqual(captured.gameClockSeconds, 221)
+        XCTAssertEqual(captured.scoreDifferential, 6)
+        XCTAssertEqual(response.modelVersion, "shot-quality-baseline-1.0")
+        XCTAssertEqual(response.attempts.first?.expectedPoints, 1.02)
+    }
+
+    private static func requestBodyData(from request: URLRequest) throws -> Data {
+        if let body = request.httpBody {
+            return body
+        }
+        guard let stream = request.httpBodyStream else {
+            throw URLProtocolTestError.missingBody
+        }
+
+        stream.open()
+        defer { stream.close() }
+
+        var data = Data()
+        let bufferSize = 1_024
+        let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferSize)
+        defer { buffer.deallocate() }
+
+        while stream.hasBytesAvailable {
+            let count = stream.read(buffer, maxLength: bufferSize)
+            if count < 0 {
+                throw stream.streamError ?? URLProtocolTestError.invalidBody
+            }
+            if count == 0 {
+                break
+            }
+            data.append(buffer, count: count)
+        }
+        return data
     }
 }
