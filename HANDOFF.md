@@ -1,6 +1,6 @@
 # CourtVision AI Handoff
 
-Last updated: 2026-06-16
+Last updated: 2026-06-21
 
 ## Current State
 
@@ -30,8 +30,8 @@ The latest complete local verification passed:
 - Full-stack web acceptance: 8 desktop/mobile Playwright cases using a real
   Alembic-seeded API, REST snapshot, game WebSocket, 20 replay events, replay
   completion, disconnect/resume, missed-event recovery, and REST fallback
-- Swift: simulator build/run with no diagnostics, shared WebSocket enum
-  contract validation, and 8 XCTest cases
+- Swift: simulator build/run with no diagnostics, shared REST DTO and
+  WebSocket enum contract validation, and 11 XCTest cases
 - Native acceptance: populated fixture dashboard, game room, model/freshness
   metadata, win-probability chart, shot map selection, and timeline; model
   tests cover sequence resume and last-snapshot retention
@@ -179,6 +179,14 @@ Completed in this continuation:
 49. Added Vercel-ready web project defaults and deployment notes. The GitHub
     repository currently has no Vercel deployment records or Vercel check-runs;
     actual deployment still requires linking an authenticated Vercel project.
+50. Added Swift REST DTO coverage for health, game detail, prediction,
+    shot-quality, source health, and replay-start responses; added public
+    `APIClient` methods for read/query REST endpoints while keeping the
+    private replay-start command out of the native client.
+51. Added `tools/check_ios_rest_contract.py` to validate Swift REST DTO fields,
+    `SourceStatus` values, public APIClient method coverage, snake_case
+    encoder/decoder mapping, and the native private-command boundary against
+    `contracts/openapi.json`; wired it into CI before simulator tests.
 
 ## Important Product Boundaries
 
@@ -221,6 +229,7 @@ Completed in this continuation:
 5. Run the native checks with:
 
    ```bash
+   python3 tools/check_ios_rest_contract.py
    python3 tools/check_ios_websocket_contract.py
    ```
 
@@ -230,9 +239,10 @@ Completed in this continuation:
    child `xcodebuild` process and run a fresh `xcodebuild test` or
    `xcodebuild clean test` with the same simulator destination.
 
-6. The next valuable increment is Swift REST contract automation. Generate or
-   validate Swift-facing REST DTOs from `contracts/openapi.json` so the SwiftUI
-   client cannot drift from the backend REST contract.
+6. The next valuable native increment is to use the new Swift `shotQuality`
+   REST client method from the selected-shot court analytics panel, displaying
+   expected points, make probability, quality label, and the model/freshness
+   metadata without claiming defender-aware quality.
 
 7. If deploying next, link Vercel with `apps/web` as the project root and set
    the environment variables in `docs/deployment.md`. Do not mark the web app

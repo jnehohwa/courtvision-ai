@@ -144,4 +144,95 @@ final class APIModelsTests: XCTestCase {
         XCTAssertEqual(snapshot.liveModelVersion, "live-win-logistic-baseline-1.0")
         XCTAssertEqual(snapshot.freshnessSeconds, 8)
     }
+
+    func testHealthResponseDecodesSourceHealth() throws {
+        let json = """
+        {
+          "status": "ok",
+          "database": "ok",
+          "redis": "degraded",
+          "latest_ingestion_at": "2026-06-14T18:29:52Z",
+          "data_lag_seconds": 12,
+          "delayed_live_enabled": false,
+          "sources": {
+            "replay": {
+              "status": "ok",
+              "last_attempt_at": "2026-06-14T18:29:40Z",
+              "last_success_at": "2026-06-14T18:29:41Z",
+              "last_event_at": null,
+              "last_error": null,
+              "consecutive_failures": 0,
+              "total_polls": 7,
+              "total_events": 20,
+              "current_poll_interval_seconds": 2.5,
+              "updated_at": "2026-06-14T18:29:52Z"
+            }
+          }
+        }
+        """
+
+        let health = try APIClient.makeDecoder().decode(
+            HealthResponse.self,
+            from: Data(json.utf8)
+        )
+
+        XCTAssertEqual(health.sources["replay"]?.totalEvents, 20)
+        XCTAssertEqual(health.sources["replay"]?.currentPollIntervalSeconds, 2.5)
+    }
+
+    func testShotQualityRequestEncodesSnakeCase() throws {
+        let request = ShotQualityRequest(
+            playerId: "player-1",
+            attempts: [
+                ShotAttemptRequest(
+                    x: 4.5,
+                    y: 22.0,
+                    shotValue: 3,
+                    period: 2,
+                    gameClockSeconds: 312,
+                    scoreDifferential: -4
+                )
+            ]
+        )
+
+        let data = try APIClient.makeEncoder().encode(request)
+        let object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: data) as? [String: Any]
+        )
+        let attempts = try XCTUnwrap(object["attempts"] as? [[String: Any]])
+        let attempt = try XCTUnwrap(attempts.first)
+
+        XCTAssertEqual(object["player_id"] as? String, "player-1")
+        XCTAssertEqual(attempt["shot_value"] as? Int, 3)
+        XCTAssertEqual(attempt["game_clock_seconds"] as? Int, 312)
+        XCTAssertEqual(attempt["score_differential"] as? Int, -4)
+    }
+
+    func testShotQualityResponseDecodesResult() throws {
+        let json = """
+        {
+          "player_id": "player-1",
+          "definition": "Shooter-neutral expected field-goal probability.",
+          "model_version": "shot-quality-baseline-1.0",
+          "attempts": [{
+            "x": 4.5,
+            "y": 22.0,
+            "distance_feet": 24.2,
+            "angle_degrees": 12.4,
+            "shot_value": 3,
+            "make_probability": 0.37,
+            "expected_points": 1.11,
+            "quality_label": "Average"
+          }]
+        }
+        """
+
+        let response = try APIClient.makeDecoder().decode(
+            ShotQualityResponse.self,
+            from: Data(json.utf8)
+        )
+
+        XCTAssertEqual(response.playerId, "player-1")
+        XCTAssertEqual(response.attempts.first?.expectedPoints, 1.11)
+    }
 }

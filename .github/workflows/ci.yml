@@ -91,6 +91,8 @@ jobs:
         run: sudo xcode-select -s /Applications/Xcode_26.5.app/Contents/Developer
       - name: Check iOS WebSocket contract
         run: python3 tools/check_ios_websocket_contract.py
+      - name: Check iOS REST contract
+        run: python3 tools/check_ios_rest_contract.py
       - name: Create iOS simulator
         id: ios-simulator
         run: |

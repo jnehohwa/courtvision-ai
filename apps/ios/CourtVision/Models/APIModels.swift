@@ -54,6 +54,29 @@ struct GamesResponse: Codable, Sendable {
     let games: [Game]
 }
 
+struct SourceHealth: Codable, Hashable, Sendable {
+    let status: String
+    let lastAttemptAt: Date?
+    let lastSuccessAt: Date?
+    let lastEventAt: Date?
+    let lastError: String?
+    let consecutiveFailures: Int
+    let totalPolls: Int
+    let totalEvents: Int
+    let currentPollIntervalSeconds: Double?
+    let updatedAt: Date
+}
+
+struct HealthResponse: Codable, Hashable, Sendable {
+    let status: String
+    let database: String
+    let redis: String
+    let latestIngestionAt: Date?
+    let dataLagSeconds: Int?
+    let delayedLiveEnabled: Bool
+    let sources: [String: SourceHealth]
+}
+
 struct TimelinePoint: Codable, Hashable, Identifiable, Sendable {
     var id: Int { sequence }
 
@@ -79,6 +102,44 @@ struct LiveSnapshot: Codable, Sendable {
     let freshnessSeconds: Int?
     let liveModelVersion: String
     let snapshotGeneratedAt: Date
+}
+
+struct ShotAttemptRequest: Codable, Hashable, Sendable {
+    let x: Double
+    let y: Double
+    let shotValue: Int
+    let period: Int
+    let gameClockSeconds: Int
+    let scoreDifferential: Int
+}
+
+struct ShotQualityRequest: Codable, Hashable, Sendable {
+    let playerId: String
+    let attempts: [ShotAttemptRequest]
+}
+
+struct ShotQualityResult: Codable, Hashable, Sendable {
+    let x: Double
+    let y: Double
+    let distanceFeet: Double
+    let angleDegrees: Double
+    let shotValue: Int
+    let makeProbability: Double
+    let expectedPoints: Double
+    let qualityLabel: String
+}
+
+struct ShotQualityResponse: Codable, Hashable, Sendable {
+    let playerId: String
+    let definition: String
+    let modelVersion: String
+    let attempts: [ShotQualityResult]
+}
+
+struct ReplayStartResponse: Codable, Hashable, Sendable {
+    let gameId: String
+    let status: String
+    let eventCount: Int
 }
 
 struct PlayPayload: Codable, Sendable {
