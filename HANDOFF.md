@@ -205,6 +205,10 @@ Completed in this continuation:
     shooter-neutral definition, `shot-quality-baseline-1.0`, and
     `no defender tracking`; a simulator screenshot was captured and visually
     inspected for the same card.
+55. Added `docs/ios-visual-acceptance.md` as a durable manual release gate for
+    the selected-shot quality panel, including fixture API startup, expected
+    health evidence, XcodeBuildMCP launch steps, semantic snapshot assertions,
+    screenshot criteria, cleanup, and troubleshooting notes.
 
 ## Important Product Boundaries
 
@@ -257,10 +261,10 @@ Completed in this continuation:
    child `xcodebuild` process and run a fresh `xcodebuild test` or
    `xcodebuild clean test` with the same simulator destination.
 
-6. The next valuable native increment is to make the visual acceptance durable:
-   either add a lightweight XCTest/UI harness for the selected-shot quality
-   panel, or keep the MCP-run screenshot procedure documented as a manual
-   release gate if UI automation remains too brittle for CI.
+6. The next valuable increment is to move back to deployment readiness:
+   verify current Vercel/GitHub deployment state, then either link the web app
+   to an authenticated Vercel project or document the exact blocker and keep
+   the Vercel-ready repo/deployment-state distinction honest.
 
 7. If deploying next, link Vercel with `apps/web` as the project root and set
    the environment variables in `docs/deployment.md`. Do not mark the web app

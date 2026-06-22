@@ -20,6 +20,9 @@ Selecting a shot on the court requests shooter-neutral shot quality from the
 REST API and displays xPTS, make probability, model version, and an explicit
 no-defender-tracking label.
 
+Before TestFlight-style handoff work or after changing the game room, run the
+manual visual release gate in `docs/ios-visual-acceptance.md`.
+
 From the repository root, run the shared REST and WebSocket contract checks
 before simulator tests:
 
