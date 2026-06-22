@@ -27,11 +27,15 @@ services:
           name: courtvision-redis
           property: connectionString
       - key: COURTVISION_INTERNAL_API_KEY
-        generateValue: true
+        sync: false
       - key: COURTVISION_ENVIRONMENT
         value: production
       - key: COURTVISION_TRUST_PROXY_HEADERS
         value: "true"
+      - key: COURTVISION_CORS_ORIGINS
+        sync: false
+      - key: COURTVISION_ENABLE_DELAYED_LIVE
+        value: "false"
   - type: worker
     name: courtvision-replay-worker
     runtime: docker
@@ -47,6 +51,8 @@ services:
           type: keyvalue
           name: courtvision-redis
           property: connectionString
+      - key: COURTVISION_ENVIRONMENT
+        value: production
   - type: cron
     name: courtvision-daily-ingestion
     runtime: docker
@@ -58,3 +64,12 @@ services:
         fromDatabase:
           name: courtvision-postgres
           property: connectionString
+      - key: COURTVISION_REDIS_URL
+        fromService:
+          type: keyvalue
+          name: courtvision-redis
+          property: connectionString
+      - key: COURTVISION_ENVIRONMENT
+        value: production
+      - key: COURTVISION_ENABLE_DELAYED_LIVE
+        value: "false"

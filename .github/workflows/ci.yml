@@ -13,8 +13,9 @@ jobs:
         with:
           cache-dependency-glob: "**/pyproject.toml"
       - run: uv sync --all-packages --all-extras
-      - run: uv run ruff check apps/api ml
+      - run: uv run ruff check apps/api ml tools
       - run: uv run pytest
+      - run: uv run python tools/check_deployment_readiness.py
       - run: uv run python -m courtvision.export_openapi
       - run: git diff --exit-code contracts/openapi.json
 

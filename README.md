@@ -82,6 +82,15 @@ root, but it has not been deployed yet. See `docs/deployment.md` for the Vercel
 and Render environment variables, CORS coupling, and the current deployment
 status.
 
+Before linking or redeploying, run the deployment preflight:
+
+```bash
+python tools/check_deployment_readiness.py
+```
+
+CI runs the same check to keep Vercel defaults, Render service wiring, manual
+secret gates, and replay-first feature flags from drifting.
+
 ## Model promotion
 
 The API ships deterministic logistic and shot-location benchmarks so replay

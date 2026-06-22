@@ -27,6 +27,11 @@ COURTVISION_INTERNAL_API_KEY=<same value configured on the API>
 `NEXT_PUBLIC_*` values are compiled into the client bundle, so changing them
 requires a new Vercel deployment.
 
+Do not commit `.vercel/project.json`; local Vercel linkage belongs in the
+ignored `.vercel/` directory. If you later add a Vercel CLI deploy workflow,
+keep `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID` in GitHub
+Secrets.
+
 ## API on Render
 
 The API must allow the Vercel web origin:
@@ -35,10 +40,42 @@ The API must allow the Vercel web origin:
 COURTVISION_CORS_ORIGINS=https://<vercel-production-domain>
 ```
 
+The Render blueprint intentionally leaves the following API values
+dashboard-managed via `sync: false`:
+
+```bash
+COURTVISION_INTERNAL_API_KEY=<same value configured in Vercel>
+COURTVISION_CORS_ORIGINS=https://<vercel-production-domain>
+```
+
+`COURTVISION_ENABLE_DELAYED_LIVE` is explicitly `false` in the blueprint.
+Enable delayed polling only after source-lag and rate-limit testing passes, and
+keep the UI labels as delayed or replay data.
+
 Add preview deployment origins only when you intentionally want preview builds
 to call the hosted API. Keep ingestion and retraining commands private; the
 public deployment should expose only read-only REST routes plus replay/WebSocket
 behavior for synthetic or licensed fixtures.
+
+## Readiness Gate
+
+Run this local preflight before linking Vercel or syncing the Render blueprint:
+
+```bash
+python tools/check_deployment_readiness.py
+```
+
+The check validates:
+
+- Vercel monorepo install/build defaults and standalone Next.js output.
+- Required web environment-variable documentation.
+- Ignored local Vercel project linkage.
+- Render Postgres, Redis-compatible storage, API, replay worker, and ingestion
+  service wiring.
+- Manual Render gates for CORS and the shared internal API key.
+- Production environment flags and the delayed-live feature flag default.
+
+CI runs the same preflight in the backend job.
 
 ## Current Status
 

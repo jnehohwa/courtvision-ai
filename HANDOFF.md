@@ -17,6 +17,7 @@ CourtVision AI has a verified replay-first vertical slice:
 - Native SwiftUI client
 - Shared OpenAPI and WebSocket contracts
 - Docker Compose, Render configuration, and CI
+- CI deployment-readiness preflight for Vercel/Render handoff drift
 - Vercel-ready web project config, but no authenticated Vercel deployment yet
 
 ## Verification Baseline
@@ -48,6 +49,9 @@ The latest complete local verification passed:
 - Artifact storage: managed local and S3-compatible publish/read, bucket and
   prefix scoping, byte limits, URI bounds, tamper detection, and remote-style
   resolver caching
+- Deployment readiness: local and CI preflight validates Vercel defaults,
+  Render service wiring, manual CORS/internal-key gates, production env flags,
+  delayed-live default, and ignored local `.vercel/` linkage
 
 ## Current Increment
 
@@ -215,6 +219,15 @@ Completed in this continuation:
     `apps/web/vercel.json` exists, no `.vercel/project.json` link exists, and
     the local Vercel CLI is absent. The web app remains Vercel-ready but not
     deployed.
+57. Added `tools/check_deployment_readiness.py` and wired it into CI. The gate
+    validates Vercel monorepo defaults, standalone Next output, required web
+    env docs, ignored `.vercel/` linkage, Render Postgres/Redis/API/worker/cron
+    wiring, dashboard-managed `COURTVISION_INTERNAL_API_KEY` and
+    `COURTVISION_CORS_ORIGINS`, production env flags, and delayed-live default.
+    The Render blueprint now keeps the API key and CORS origins as
+    `sync: false`, sets production env flags for background processes, gives
+    ingestion Redis, and keeps delayed polling explicitly disabled until the
+    source-lag/rate-limit gate is passed.
 
 ## Important Product Boundaries
 
@@ -242,7 +255,8 @@ Completed in this continuation:
 
    ```bash
    PYTHONPATH=apps/api:ml .venv/bin/pytest -q
-   PYTHONPATH=apps/api .venv/bin/ruff check apps/api ml
+   PYTHONPATH=apps/api .venv/bin/ruff check apps/api ml tools
+   .venv/bin/python tools/check_deployment_readiness.py
    ```
 
 4. Run web checks from `apps/web`:
@@ -269,8 +283,9 @@ Completed in this continuation:
 
 6. The next valuable increment is to choose the deployment path deliberately:
    either link the web app to an authenticated Vercel project after the backend
-   has stable hosted REST/WebSocket URLs, or continue local/replay-first product
-   hardening while keeping the Vercel-ready versus deployed distinction honest.
+   has stable hosted REST/WebSocket URLs and the deployment preflight passes, or
+   continue local/replay-first product hardening while keeping the Vercel-ready
+   versus deployed distinction honest.
 
 7. If deploying next, link Vercel with `apps/web` as the project root and set
    the environment variables in `docs/deployment.md`. Do not mark the web app
