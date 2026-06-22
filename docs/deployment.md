@@ -42,6 +42,17 @@ behavior for synthetic or licensed fixtures.
 
 ## Current Status
 
-As of the latest checkpoint, GitHub has no deployment records for this
-repository and no Vercel check-runs. The repo is ready to link, but production
-Vercel deployment still requires an authenticated Vercel project.
+Verified on 2026-06-22 against commit
+`fe2f4b98065729a6537e01acce2f2a0aaec03d42`:
+
+- GitHub Deployments API for `jnehohwa/courtvision-ai` returned `[]`.
+- The commit's check-runs are GitHub Actions jobs only: `backend`, `web`,
+  `e2e`, `redis-integration`, and `ios`; there are no Vercel check-runs.
+- `apps/web/vercel.json` contains Vercel-ready project defaults.
+- No `.vercel/project.json` is committed or present locally, so the checkout is
+  not linked to an authenticated Vercel project.
+- The Vercel CLI is not installed on this machine's `PATH`.
+
+The repo is Vercel-ready, but the public web app has not been deployed to
+Vercel yet. Production deployment still requires an authenticated Vercel project
+and stable hosted API/WebSocket URLs.

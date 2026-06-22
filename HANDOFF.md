@@ -1,6 +1,6 @@
 # CourtVision AI Handoff
 
-Last updated: 2026-06-21
+Last updated: 2026-06-22
 
 ## Current State
 
@@ -209,6 +209,12 @@ Completed in this continuation:
     the selected-shot quality panel, including fixture API startup, expected
     health evidence, XcodeBuildMCP launch steps, semantic snapshot assertions,
     screenshot criteria, cleanup, and troubleshooting notes.
+56. Re-verified deployment state on 2026-06-22 at commit
+    `fe2f4b98065729a6537e01acce2f2a0aaec03d42`: GitHub Deployments API returned
+    `[]`, check-runs were GitHub Actions only with no Vercel app entries,
+    `apps/web/vercel.json` exists, no `.vercel/project.json` link exists, and
+    the local Vercel CLI is absent. The web app remains Vercel-ready but not
+    deployed.
 
 ## Important Product Boundaries
 
@@ -261,10 +267,10 @@ Completed in this continuation:
    child `xcodebuild` process and run a fresh `xcodebuild test` or
    `xcodebuild clean test` with the same simulator destination.
 
-6. The next valuable increment is to move back to deployment readiness:
-   verify current Vercel/GitHub deployment state, then either link the web app
-   to an authenticated Vercel project or document the exact blocker and keep
-   the Vercel-ready repo/deployment-state distinction honest.
+6. The next valuable increment is to choose the deployment path deliberately:
+   either link the web app to an authenticated Vercel project after the backend
+   has stable hosted REST/WebSocket URLs, or continue local/replay-first product
+   hardening while keeping the Vercel-ready versus deployed distinction honest.
 
 7. If deploying next, link Vercel with `apps/web` as the project root and set
    the environment variables in `docs/deployment.md`. Do not mark the web app
