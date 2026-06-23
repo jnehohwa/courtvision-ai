@@ -8,6 +8,8 @@ const channelOverride = browserChannel
     ? { browserName: "chromium" as const }
   : {};
 const fullStack = process.env.COURTVISION_E2E_FULL_STACK === "1";
+const redisUrl =
+  process.env.COURTVISION_E2E_REDIS_URL ?? "redis://127.0.0.1:6399/0";
 const apiCommand =
   process.env.COURTVISION_E2E_API_COMMAND ??
   "../../.venv/bin/python -m courtvision.e2e_server";
@@ -35,8 +37,10 @@ export default defineConfig({
             COURTVISION_ENVIRONMENT: "e2e",
             COURTVISION_DATABASE_URL:
               "sqlite+aiosqlite:////tmp/courtvision-playwright.db",
-            COURTVISION_REDIS_URL: "redis://127.0.0.1:6399/0",
+            COURTVISION_REDIS_URL: redisUrl,
             COURTVISION_REPLAY_TICK_SECONDS: "0.03",
+            COURTVISION_E2E_RUN_WORKER:
+              process.env.COURTVISION_E2E_RUN_WORKER ?? "0",
           },
         },
         {

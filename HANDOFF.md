@@ -31,6 +31,9 @@ The latest complete local verification passed:
 - Full-stack web acceptance: 8 desktop/mobile Playwright cases using a real
   Alembic-seeded API, REST snapshot, game WebSocket, 20 replay events, replay
   completion, disconnect/resume, missed-event recovery, and REST fallback
+- Redis-backed full-stack acceptance: CI also runs the same browser replay
+  workflow with a real Redis service and E2E replay worker, proving queued
+  replay commands and Redis pub/sub delivery into the FastAPI WebSocket layer
 - Swift: simulator build/run with no diagnostics, shared REST DTO and
   WebSocket enum contract validation, and 14 XCTest cases
 - Native acceptance: populated fixture dashboard, game room, model/freshness
@@ -228,6 +231,12 @@ Completed in this continuation:
     `sync: false`, sets production env flags for background processes, gives
     ingestion Redis, and keeps delayed polling explicitly disabled until the
     source-lag/rate-limit gate is passed.
+58. Added a Redis-backed full-stack Playwright CI lane. `courtvision.e2e_server`
+    can now launch the replay worker with `COURTVISION_E2E_RUN_WORKER=1`, the
+    web harness accepts `COURTVISION_E2E_REDIS_URL`, and the new `e2e-redis`
+    job runs the existing desktop/mobile replay acceptance suite against a real
+    Redis service. The default local E2E path still leaves Redis unavailable to
+    verify the in-process fallback.
 
 ## Important Product Boundaries
 
@@ -266,6 +275,17 @@ Completed in this continuation:
    ./node_modules/.bin/tsc --noEmit
    ./node_modules/.bin/vitest run
    ./node_modules/.bin/next build
+   COURTVISION_E2E_FULL_STACK=1 PLAYWRIGHT_CHANNEL=chrome ./node_modules/.bin/playwright test
+   ```
+
+   If Redis is available locally, also run:
+
+   ```bash
+   COURTVISION_E2E_FULL_STACK=1 \
+   COURTVISION_E2E_REDIS_URL=redis://127.0.0.1:6379/1 \
+   COURTVISION_E2E_RUN_WORKER=1 \
+   PLAYWRIGHT_CHANNEL=chrome \
+   ./node_modules/.bin/playwright test
    ```
 
 5. Run the native checks with:
@@ -319,9 +339,10 @@ solely to increase contribution activity.
   upload/download smoke test. Configure identical storage settings on API,
   replay worker, and ingestion processes, with IAM restricted to the declared
   bucket and prefix.
-- Full-stack E2E intentionally leaves Redis unavailable to verify the local
-  in-process fallback. A separate Redis-backed worker acceptance environment
-  remains useful before production deployment.
+- Full-stack E2E still leaves Redis unavailable by default to verify the local
+  in-process fallback. The `e2e-redis` CI job covers the production-style Redis
+  queue/pub-sub replay path; local Redis-backed Playwright was not run on this
+  machine because `redis-server` is not installed.
 - The repository still has no committed `uv.lock`; a local `uv` wheel download
   was cancelled after sustained CDN throughput of roughly 34 kB/s. CI cache
   invalidation is explicitly keyed from the workspace dependency manifests in

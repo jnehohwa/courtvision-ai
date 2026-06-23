@@ -75,6 +75,21 @@ plus WebSocket replay on desktop and mobile. Recovery cases force a mid-replay
 disconnect, confirm sequence-based catch-up, exhaust bounded reconnects, enter
 REST polling, and preserve the last valid snapshot through a simulated `503`.
 
+CI also runs the same browser replay workflow with a real Redis service and an
+E2E replay worker:
+
+```bash
+COURTVISION_E2E_FULL_STACK=1 \
+COURTVISION_E2E_REDIS_URL=redis://127.0.0.1:6379/1 \
+COURTVISION_E2E_RUN_WORKER=1 \
+PLAYWRIGHT_BROWSER=chromium \
+./node_modules/.bin/playwright test
+```
+
+Use that mode locally only when Redis is available. It proves the API queues
+replay commands through Redis, the worker publishes replay envelopes over Redis
+pub/sub, and the browser receives them through the FastAPI WebSocket.
+
 ## Deployment
 
 The web app is ready to link as a Vercel project with `apps/web` as the project

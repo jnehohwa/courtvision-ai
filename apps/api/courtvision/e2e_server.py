@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 import uvicorn
@@ -39,12 +42,30 @@ def prepare_database() -> None:
 
 def main() -> None:
     prepare_database()
-    uvicorn.run(
-        "courtvision.main:app",
-        host="127.0.0.1",
-        port=8000,
-        log_level="warning",
-    )
+    worker_process: subprocess.Popen[str] | None = None
+    if os.environ.get("COURTVISION_E2E_RUN_WORKER") == "1":
+        worker_process = subprocess.Popen(
+            [sys.executable, "-m", "courtvision.worker"],
+            cwd=Path(__file__).resolve().parents[1],
+            env={**os.environ, "PYTHONUNBUFFERED": "1"},
+            text=True,
+        )
+
+    try:
+        uvicorn.run(
+            "courtvision.main:app",
+            host="127.0.0.1",
+            port=8000,
+            log_level="warning",
+        )
+    finally:
+        if worker_process is not None and worker_process.poll() is None:
+            worker_process.terminate()
+            try:
+                worker_process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                worker_process.kill()
+                worker_process.wait()
 
 
 if __name__ == "__main__":
