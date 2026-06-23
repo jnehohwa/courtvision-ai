@@ -65,6 +65,9 @@ The latest complete local verification passed:
 - Web replay proxy guardrail: production replay-start requests return a clear
   `503` unless the internal Render URL and a non-default internal key are
   configured; replay-start responses are returned with `Cache-Control: no-store`
+- Web API client freshness: games, live snapshots, and replay-start requests
+  explicitly use no-store fetches; failed replay starts restore the last valid
+  timeline instead of leaving the UI in replaying state
 
 ## Current Increment
 
@@ -283,6 +286,13 @@ Completed in this continuation:
     replay-start results, and upstream failures. Tests cover both API headers
     and replay proxy responses, and the deployment preflight now guards the
     no-store policy.
+64. Hardened the web API client freshness path. Games, live snapshots, and
+    replay-start requests are now all covered by unit tests proving
+    `cache: "no-store"`, and replay starts route through the shared API module.
+    The live-game hook now restores the last valid timeline if the replay-start
+    request is rejected or the local replay bridge is unavailable, avoiding a
+    stuck replaying state. The deployment preflight now guards the web client
+    no-store fetch policy.
 
 ## Important Product Boundaries
 
@@ -422,6 +432,15 @@ solely to increase contribution activity.
   (`90 passed, 3 skipped`), `./node_modules/.bin/eslint .`,
   `./node_modules/.bin/tsc --noEmit`, `./node_modules/.bin/vitest run`
   (`9 passed`), `./node_modules/.bin/next build`,
+  `COURTVISION_E2E_FULL_STACK=1 PLAYWRIGHT_CHANNEL=chrome ./node_modules/.bin/playwright test`
+  (`8 passed`), and `git diff --check`.
+- On 2026-06-23, the web API-client freshness increment passed:
+  `./node_modules/.bin/vitest run src/lib/api.test.ts` (`4 passed`),
+  `./node_modules/.bin/eslint src/lib/api.ts src/lib/api.test.ts src/hooks/use-live-game.ts`,
+  `./node_modules/.bin/tsc --noEmit`, `./node_modules/.bin/eslint .`,
+  `./node_modules/.bin/vitest run` (`13 passed`),
+  `.venv/bin/python tools/check_deployment_readiness.py`,
+  `./node_modules/.bin/next build`,
   `COURTVISION_E2E_FULL_STACK=1 PLAYWRIGHT_CHANNEL=chrome ./node_modules/.bin/playwright test`
   (`8 passed`), and `git diff --check`.
 - The repository still has no committed `uv.lock`; a local `uv` wheel download

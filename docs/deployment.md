@@ -31,7 +31,9 @@ The server-side replay proxy rejects production replay-start requests with a
 clear `503` unless the internal Render URL and shared internal key are set. It
 also rejects the development replay key in production, matching the API startup
 guardrail. Replay-start responses include `Cache-Control: no-store` so replay
-control-plane calls are never served from a stale browser or edge cache.
+control-plane calls are never served from a stale browser or edge cache. The
+web client also sends no-store fetches for games, live snapshots, and replay
+starts.
 
 The dashboard also applies baseline security headers to every route through
 `next.config.ts`, while Vercel remains responsible for TLS termination and any
@@ -90,6 +92,7 @@ The check validates:
 - Vercel monorepo install/build defaults and standalone Next.js output.
 - Next.js baseline security headers.
 - Uncached replay-start proxy responses.
+- No-store web client fetches for games, live snapshots, and replay starts.
 - Required web environment-variable documentation.
 - Ignored local Vercel project linkage.
 - Render Postgres, Redis-compatible storage, API, replay worker, and ingestion

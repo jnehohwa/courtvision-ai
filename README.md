@@ -125,7 +125,8 @@ The web replay proxy also refuses to call the private replay-start endpoint in
 production unless `COURTVISION_INTERNAL_API_URL` and a non-default
 `COURTVISION_INTERNAL_API_KEY` are configured. Local development keeps the
 deterministic fallback key for the seeded replay fixture. Replay-start proxy
-responses are returned with `Cache-Control: no-store`.
+responses are returned with `Cache-Control: no-store`. The web client also
+uses no-store fetches for games, live snapshots, and replay-start requests.
 
 The Next.js dashboard also ships baseline security headers for every route:
 nosniff, frame denial, no-referrer, a restrictive permissions policy, and

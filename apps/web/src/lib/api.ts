@@ -30,3 +30,13 @@ export async function fetchLiveSnapshot(
   if (!response.ok) throw new Error("Live snapshot request failed");
   return (await response.json()) as LiveSnapshot;
 }
+
+export async function startReplay(gameId: string): Promise<boolean> {
+  const response = await fetch("/api/replay", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ gameId }),
+    cache: "no-store",
+  });
+  return response.ok;
+}

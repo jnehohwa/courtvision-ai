@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { fetchLiveSnapshot } from "@/lib/api";
+import { fetchLiveSnapshot, startReplay as startReplayRequest } from "@/lib/api";
 import { fallbackSnapshot } from "@/lib/fixtures";
 import type {
   LiveSnapshot,
@@ -187,15 +187,14 @@ export function useLiveGame(gameId: string) {
 
   const startReplay = useCallback(async () => {
     setIsReplaying(true);
-    const response = await fetch("/api/replay", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ gameId }),
-    });
-    if (!response.ok) {
-      setIsReplaying(false);
-      setTimeline(snapshot?.timeline ?? []);
+    try {
+      const replayStarted = await startReplayRequest(gameId);
+      if (replayStarted) return;
+    } catch {
+      // Restore the last valid timeline if the local replay bridge is unavailable.
     }
+    setIsReplaying(false);
+    setTimeline(snapshot?.timeline ?? []);
   }, [gameId, snapshot]);
 
   return {

@@ -154,6 +154,7 @@ def check_vercel(check: DeploymentCheck) -> None:
     replay_route = read_text(
         ROOT / "apps" / "web" / "src" / "app" / "api" / "replay" / "route.ts"
     )
+    web_api_client = read_text(ROOT / "apps" / "web" / "src" / "lib" / "api.ts")
     env_example = read_text(ROOT / ".env.example")
     gitignore = read_text(ROOT / ".gitignore")
 
@@ -207,6 +208,13 @@ def check_vercel(check: DeploymentCheck) -> None:
     check.require(
         "Cache-Control" in replay_route and "no-store" in replay_route,
         "apps/web replay proxy must keep replay-start responses uncached",
+    )
+    check.require(
+        "fetchGames" in web_api_client
+        and "fetchLiveSnapshot" in web_api_client
+        and "startReplay" in web_api_client
+        and web_api_client.count('cache: "no-store"') >= 3,
+        "apps/web API client must opt games, live snapshots, and replay starts out of browser caching",
     )
     check.require(
         ".vercel/" in gitignore,
