@@ -15,6 +15,12 @@ type ReplayProxyConfig =
       detail: string;
     };
 
+function replayJson(body: unknown, init: ResponseInit) {
+  const response = NextResponse.json(body, init);
+  response.headers.set("Cache-Control", "no-store");
+  return response;
+}
+
 export function resolveReplayProxyConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): ReplayProxyConfig {
@@ -49,12 +55,12 @@ export function resolveReplayProxyConfig(
 export async function POST(request: NextRequest) {
   const { gameId } = (await request.json()) as { gameId?: string };
   if (!gameId) {
-    return NextResponse.json({ detail: "gameId is required" }, { status: 400 });
+    return replayJson({ detail: "gameId is required" }, { status: 400 });
   }
 
   const config = resolveReplayProxyConfig();
   if (!config.ok) {
-    return NextResponse.json({ detail: config.detail }, { status: 503 });
+    return replayJson({ detail: config.detail }, { status: 503 });
   }
 
   try {
@@ -66,9 +72,9 @@ export async function POST(request: NextRequest) {
         cache: "no-store",
       },
     );
-    return NextResponse.json(await response.json(), { status: response.status });
+    return replayJson(await response.json(), { status: response.status });
   } catch {
-    return NextResponse.json(
+    return replayJson(
       { detail: "Replay service is unavailable" },
       { status: 503 },
     );

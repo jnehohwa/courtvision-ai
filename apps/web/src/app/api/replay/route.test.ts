@@ -71,6 +71,7 @@ describe("POST", () => {
     const response = await POST(replayRequest({}));
 
     expect(response.status).toBe(400);
+    expect(response.headers.get("cache-control")).toBe("no-store");
     await expect(response.json()).resolves.toEqual({
       detail: "gameId is required",
     });
@@ -85,6 +86,7 @@ describe("POST", () => {
     const response = await POST(replayRequest({ gameId: "cv-2026-bos-nyk" }));
 
     expect(response.status).toBe(503);
+    expect(response.headers.get("cache-control")).toBe("no-store");
     await expect(response.json()).resolves.toEqual({
       detail: "Replay service is not configured",
     });
@@ -107,6 +109,7 @@ describe("POST", () => {
     const response = await POST(replayRequest({ gameId: "cv-2026-bos-nyk" }));
 
     expect(response.status).toBe(202);
+    expect(response.headers.get("cache-control")).toBe("no-store");
     await expect(response.json()).resolves.toEqual({ started: true });
     expect(fetchMock).toHaveBeenCalledWith(
       "https://api.example.com/internal/replays/cv-2026-bos-nyk/start",

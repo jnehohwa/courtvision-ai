@@ -117,12 +117,15 @@ HTTPS CORS origins, and trusted proxy headers.
 API responses include baseline browser safety headers, including nosniff,
 frame denial, no-referrer, a restrictive permissions policy, and
 same-origin opener isolation. HSTS is only added when the API runs with
-`COURTVISION_ENVIRONMENT=production`.
+`COURTVISION_ENVIRONMENT=production`. Dynamic API responses also include
+`Cache-Control: no-store` so replay snapshots and prediction freshness metadata
+are not accidentally cached by browsers or proxies.
 
 The web replay proxy also refuses to call the private replay-start endpoint in
 production unless `COURTVISION_INTERNAL_API_URL` and a non-default
 `COURTVISION_INTERNAL_API_KEY` are configured. Local development keeps the
-deterministic fallback key for the seeded replay fixture.
+deterministic fallback key for the seeded replay fixture. Replay-start proxy
+responses are returned with `Cache-Control: no-store`.
 
 The Next.js dashboard also ships baseline security headers for every route:
 nosniff, frame denial, no-referrer, a restrictive permissions policy, and

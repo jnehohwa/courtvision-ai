@@ -205,6 +205,10 @@ def check_vercel(check: DeploymentCheck) -> None:
         "apps/web replay proxy must reject unconfigured or development-key production replay starts",
     )
     check.require(
+        "Cache-Control" in replay_route and "no-store" in replay_route,
+        "apps/web replay proxy must keep replay-start responses uncached",
+    )
+    check.require(
         ".vercel/" in gitignore,
         ".gitignore must exclude local Vercel project linkage",
     )
@@ -345,12 +349,14 @@ def check_render(check: DeploymentCheck) -> None:
     check.require(
         "BASE_SECURITY_HEADERS" in api_main
         and "Strict-Transport-Security" in api_main
+        and "Cache-Control" in api_main
+        and "no-store" in api_main
         and "X-Content-Type-Options" in api_main
         and "X-Frame-Options" in api_main
         and "Referrer-Policy" in api_main
         and "Permissions-Policy" in api_main
         and "Cross-Origin-Opener-Policy" in api_main,
-        "FastAPI app must keep baseline security headers and production-only HSTS",
+        "FastAPI app must keep baseline security headers, no-store caching, and production-only HSTS",
     )
 
 

@@ -30,7 +30,8 @@ requires a new Vercel deployment.
 The server-side replay proxy rejects production replay-start requests with a
 clear `503` unless the internal Render URL and shared internal key are set. It
 also rejects the development replay key in production, matching the API startup
-guardrail.
+guardrail. Replay-start responses include `Cache-Control: no-store` so replay
+control-plane calls are never served from a stale browser or edge cache.
 
 The dashboard also applies baseline security headers to every route through
 `next.config.ts`, while Vercel remains responsible for TLS termination and any
@@ -64,6 +65,8 @@ SQLite, loopback Redis, or untrusted proxy headers.
 The API also attaches baseline security headers to HTTP responses. HSTS is
 production-only so local HTTP development remains usable while hosted API
 responses advertise HTTPS transport once `COURTVISION_ENVIRONMENT=production`.
+Dynamic API responses include `Cache-Control: no-store` to preserve freshness
+labels and last-valid-snapshot semantics.
 
 `COURTVISION_ENABLE_DELAYED_LIVE` is explicitly `false` in the blueprint.
 Enable delayed polling only after source-lag and rate-limit testing passes, and
@@ -86,11 +89,13 @@ The check validates:
 
 - Vercel monorepo install/build defaults and standalone Next.js output.
 - Next.js baseline security headers.
+- Uncached replay-start proxy responses.
 - Required web environment-variable documentation.
 - Ignored local Vercel project linkage.
 - Render Postgres, Redis-compatible storage, API, replay worker, and ingestion
   service wiring.
-- FastAPI baseline security headers and production-only HSTS source guardrail.
+- FastAPI baseline security headers, no-store cache control, and
+  production-only HSTS source guardrail.
 - Manual Render gates for CORS and the shared internal API key.
 - Production environment flags and the delayed-live feature flag default.
 

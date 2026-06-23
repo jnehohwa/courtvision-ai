@@ -35,6 +35,12 @@ def security_headers() -> dict[str, str]:
     return headers
 
 
+def response_headers() -> dict[str, str]:
+    headers = security_headers()
+    headers["Cache-Control"] = "no-store"
+    return headers
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await event_bus.start(subscribe=True)
@@ -104,7 +110,7 @@ async def enforce_public_rate_limit(request: Request, call_next):
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
-    response.headers.update(security_headers())
+    response.headers.update(response_headers())
     return response
 
 

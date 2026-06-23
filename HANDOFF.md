@@ -59,12 +59,12 @@ The latest complete local verification passed:
   keys, loopback CORS, SQLite, loopback Redis, or untrusted proxy headers when
   `COURTVISION_ENVIRONMENT=production`
 - API security headers: all HTTP responses receive baseline browser safety
-  headers, with HSTS limited to production
+  headers and `Cache-Control: no-store`, with HSTS limited to production
 - Web security headers: all Next.js routes receive baseline browser safety
   headers through `next.config.ts`
 - Web replay proxy guardrail: production replay-start requests return a clear
   `503` unless the internal Render URL and a non-default internal key are
-  configured
+  configured; replay-start responses are returned with `Cache-Control: no-store`
 
 ## Current Increment
 
@@ -276,6 +276,13 @@ Completed in this continuation:
     Added a config test and deployment-preflight coverage so the hosted
     dashboard does not drift away from the same baseline browser protections as
     the API.
+63. Added no-store cache headers for dynamic API and replay surfaces. The
+    FastAPI middleware now applies `Cache-Control: no-store` alongside the
+    baseline security headers, and the Next.js replay proxy returns no-store
+    responses for validation errors, service-unconfigured responses, upstream
+    replay-start results, and upstream failures. Tests cover both API headers
+    and replay proxy responses, and the deployment preflight now guards the
+    no-store policy.
 
 ## Important Product Boundaries
 
@@ -404,6 +411,19 @@ solely to increase contribution activity.
   `./node_modules/.bin/next build`,
   `.venv/bin/python tools/check_deployment_readiness.py`, and
   `git diff --check`.
+- On 2026-06-23, the no-store cache-header increment passed:
+  `PYTHONPATH=apps/api:ml .venv/bin/pytest apps/api/tests/test_security_headers.py apps/api/tests/test_rate_limit.py -q`
+  (`6 passed`),
+  `./node_modules/.bin/vitest run src/app/api/replay/route.test.ts`
+  (`7 passed`),
+  `PYTHONPATH=apps/api:ml .venv/bin/ruff check apps/api ml tools`,
+  `.venv/bin/python tools/check_deployment_readiness.py`,
+  `PYTHONPATH=apps/api:ml .venv/bin/pytest -q`
+  (`90 passed, 3 skipped`), `./node_modules/.bin/eslint .`,
+  `./node_modules/.bin/tsc --noEmit`, `./node_modules/.bin/vitest run`
+  (`9 passed`), `./node_modules/.bin/next build`,
+  `COURTVISION_E2E_FULL_STACK=1 PLAYWRIGHT_CHANNEL=chrome ./node_modules/.bin/playwright test`
+  (`8 passed`), and `git diff --check`.
 - The repository still has no committed `uv.lock`; a local `uv` wheel download
   was cancelled after sustained CDN throughput of roughly 34 kB/s. CI cache
   invalidation is explicitly keyed from the workspace dependency manifests in

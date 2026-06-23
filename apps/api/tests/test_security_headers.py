@@ -6,6 +6,7 @@ from courtvision.main import rate_limiter, security_headers, settings
 
 
 EXPECTED_SECURITY_HEADERS = {
+    "cache-control": "no-store",
     "x-content-type-options": "nosniff",
     "x-frame-options": "DENY",
     "referrer-policy": "no-referrer",
