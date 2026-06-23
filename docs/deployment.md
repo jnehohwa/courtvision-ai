@@ -48,6 +48,10 @@ COURTVISION_INTERNAL_API_KEY=<same value configured in Vercel>
 COURTVISION_CORS_ORIGINS=https://<vercel-production-domain>
 ```
 
+The API validates production settings at startup. A production process will fail
+fast if it is still using the development internal key, loopback CORS origins,
+SQLite, loopback Redis, or untrusted proxy headers.
+
 `COURTVISION_ENABLE_DELAYED_LIVE` is explicitly `false` in the blueprint.
 Enable delayed polling only after source-lag and rate-limit testing passes, and
 keep the UI labels as delayed or replay data.

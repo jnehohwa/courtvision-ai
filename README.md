@@ -106,6 +106,10 @@ python tools/check_deployment_readiness.py
 CI runs the same check to keep Vercel defaults, Render service wiring, manual
 secret gates, and replay-first feature flags from drifting.
 
+The API also validates production settings at startup. A production deployment
+must provide a non-default internal API key, hosted PostgreSQL and Redis URLs,
+HTTPS CORS origins, and trusted proxy headers.
+
 ## Model promotion
 
 The API ships deterministic logistic and shot-location benchmarks so replay

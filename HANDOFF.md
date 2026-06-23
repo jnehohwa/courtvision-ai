@@ -24,7 +24,7 @@ CourtVision AI has a verified replay-first vertical slice:
 
 The latest complete local verification passed:
 
-- Backend and ML: 79 tests locally, plus 3 Redis-only tests in CI
+- Backend and ML: 87 tests locally, plus 3 Redis-only tests in CI
 - Ruff: clean
 - Web: ESLint, TypeScript, Vitest, Next.js production build, and Playwright
   desktop/mobile dashboard interaction through the installed Chrome channel
@@ -55,6 +55,9 @@ The latest complete local verification passed:
 - Deployment readiness: local and CI preflight validates Vercel defaults,
   Render service wiring, manual CORS/internal-key gates, production env flags,
   delayed-live default, and ignored local `.vercel/` linkage
+- Production config guardrails: API settings fail fast on development internal
+  keys, loopback CORS, SQLite, loopback Redis, or untrusted proxy headers when
+  `COURTVISION_ENVIRONMENT=production`
 
 ## Current Increment
 
@@ -237,6 +240,11 @@ Completed in this continuation:
     job runs the existing desktop/mobile replay acceptance suite against a real
     Redis service. The default local E2E path still leaves Redis unavailable to
     verify the in-process fallback.
+59. Added production settings guardrails. `Settings` now rejects production
+    startup with the development internal API key, short internal keys, empty
+    or non-HTTPS CORS origins, loopback CORS hosts, non-PostgreSQL database
+    URLs, loopback Redis URLs, or disabled trusted proxy headers. Added config
+    tests for each rejection path plus the accepted hosted production shape.
 
 ## Important Product Boundaries
 
