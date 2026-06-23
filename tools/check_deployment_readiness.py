@@ -181,6 +181,15 @@ def check_vercel(check: DeploymentCheck) -> None:
         "poweredByHeader: false" in next_config,
         "Next.js config must keep the X-Powered-By header disabled",
     )
+    check.require(
+        "securityHeaders" in next_config
+        and "X-Content-Type-Options" in next_config
+        and "X-Frame-Options" in next_config
+        and "Referrer-Policy" in next_config
+        and "Permissions-Policy" in next_config
+        and "Cross-Origin-Opener-Policy" in next_config,
+        "Next.js config must keep baseline security headers enabled",
+    )
     for env_key in sorted(REQUIRED_WEB_ENV):
         check.require(
             f"{env_key}=" in env_example,

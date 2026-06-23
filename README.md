@@ -124,6 +124,10 @@ production unless `COURTVISION_INTERNAL_API_URL` and a non-default
 `COURTVISION_INTERNAL_API_KEY` are configured. Local development keeps the
 deterministic fallback key for the seeded replay fixture.
 
+The Next.js dashboard also ships baseline security headers for every route:
+nosniff, frame denial, no-referrer, a restrictive permissions policy, and
+same-origin opener isolation.
+
 ## Model promotion
 
 The API ships deterministic logistic and shot-location benchmarks so replay

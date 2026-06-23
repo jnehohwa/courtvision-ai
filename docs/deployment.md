@@ -32,6 +32,10 @@ clear `503` unless the internal Render URL and shared internal key are set. It
 also rejects the development replay key in production, matching the API startup
 guardrail.
 
+The dashboard also applies baseline security headers to every route through
+`next.config.ts`, while Vercel remains responsible for TLS termination and any
+edge-managed transport policy.
+
 Do not commit `.vercel/project.json`; local Vercel linkage belongs in the
 ignored `.vercel/` directory. If you later add a Vercel CLI deploy workflow,
 keep `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID` in GitHub
@@ -81,6 +85,7 @@ python tools/check_deployment_readiness.py
 The check validates:
 
 - Vercel monorepo install/build defaults and standalone Next.js output.
+- Next.js baseline security headers.
 - Required web environment-variable documentation.
 - Ignored local Vercel project linkage.
 - Render Postgres, Redis-compatible storage, API, replay worker, and ingestion

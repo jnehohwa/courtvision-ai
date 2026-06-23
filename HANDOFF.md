@@ -60,6 +60,8 @@ The latest complete local verification passed:
   `COURTVISION_ENVIRONMENT=production`
 - API security headers: all HTTP responses receive baseline browser safety
   headers, with HSTS limited to production
+- Web security headers: all Next.js routes receive baseline browser safety
+  headers through `next.config.ts`
 - Web replay proxy guardrail: production replay-start requests return a clear
   `503` unless the internal Render URL and a non-default internal key are
   configured
@@ -268,6 +270,12 @@ Completed in this continuation:
     responses, rate-limited `429` responses, and the production-only HSTS
     helper. The deployment preflight now checks the source guardrail for these
     headers.
+62. Added Next.js security headers. `next.config.ts` now applies
+    `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`,
+    `Permissions-Policy`, and `Cross-Origin-Opener-Policy` to every route.
+    Added a config test and deployment-preflight coverage so the hosted
+    dashboard does not drift away from the same baseline browser protections as
+    the API.
 
 ## Important Product Boundaries
 
@@ -388,6 +396,12 @@ solely to increase contribution activity.
 - On 2026-06-23, the API security-header increment passed:
   `PYTHONPATH=apps/api:ml .venv/bin/ruff check apps/api ml tools`,
   `PYTHONPATH=apps/api:ml .venv/bin/pytest -q` (`90 passed, 3 skipped`),
+  `.venv/bin/python tools/check_deployment_readiness.py`, and
+  `git diff --check`.
+- On 2026-06-23, the Next.js security-header increment passed:
+  `./node_modules/.bin/eslint .`, `./node_modules/.bin/tsc --noEmit`,
+  `./node_modules/.bin/vitest run` (`9 passed`),
+  `./node_modules/.bin/next build`,
   `.venv/bin/python tools/check_deployment_readiness.py`, and
   `git diff --check`.
 - The repository still has no committed `uv.lock`; a local `uv` wheel download
