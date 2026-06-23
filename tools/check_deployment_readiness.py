@@ -203,6 +203,7 @@ def check_vercel(check: DeploymentCheck) -> None:
 
 def check_render(check: DeploymentCheck) -> None:
     blueprint = load_render_blueprint()
+    api_main = read_text(ROOT / "apps" / "api" / "courtvision" / "main.py")
     databases = blueprint.get("databases")
     check.require(isinstance(databases, list), "render.yaml must define databases")
     database = next(
@@ -331,6 +332,16 @@ def check_render(check: DeploymentCheck) -> None:
         "COURTVISION_ENABLE_DELAYED_LIVE",
         "false",
         service="courtvision-daily-ingestion",
+    )
+    check.require(
+        "BASE_SECURITY_HEADERS" in api_main
+        and "Strict-Transport-Security" in api_main
+        and "X-Content-Type-Options" in api_main
+        and "X-Frame-Options" in api_main
+        and "Referrer-Policy" in api_main
+        and "Permissions-Policy" in api_main
+        and "Cross-Origin-Opener-Policy" in api_main,
+        "FastAPI app must keep baseline security headers and production-only HSTS",
     )
 
 

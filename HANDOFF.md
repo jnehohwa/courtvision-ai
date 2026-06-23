@@ -24,7 +24,7 @@ CourtVision AI has a verified replay-first vertical slice:
 
 The latest complete local verification passed:
 
-- Backend and ML: 87 tests locally, plus 3 Redis-only tests in CI
+- Backend and ML: 90 tests locally, plus 3 Redis-only tests in CI
 - Ruff: clean
 - Web: ESLint, TypeScript, Vitest, Next.js production build, and Playwright
   desktop/mobile dashboard interaction through the installed Chrome channel
@@ -58,6 +58,8 @@ The latest complete local verification passed:
 - Production config guardrails: API settings fail fast on development internal
   keys, loopback CORS, SQLite, loopback Redis, or untrusted proxy headers when
   `COURTVISION_ENVIRONMENT=production`
+- API security headers: all HTTP responses receive baseline browser safety
+  headers, with HSTS limited to production
 - Web replay proxy guardrail: production replay-start requests return a clear
   `503` unless the internal Render URL and a non-default internal key are
   configured
@@ -259,6 +261,13 @@ Completed in this continuation:
     full-stack harness now shares an E2E-only non-default internal key between
     the API and Next.js so production-style replay tests keep exercising the
     private replay-start boundary.
+61. Added FastAPI security headers. HTTP responses now include
+    `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`,
+    `Permissions-Policy`, and `Cross-Origin-Opener-Policy`; HSTS is added only
+    when `COURTVISION_ENVIRONMENT=production`. Tests cover normal health/API
+    responses, rate-limited `429` responses, and the production-only HSTS
+    helper. The deployment preflight now checks the source guardrail for these
+    headers.
 
 ## Important Product Boundaries
 
@@ -376,6 +385,11 @@ solely to increase contribution activity.
   (`8 passed`). The first Playwright attempt was intentionally rerun after it
   exposed the harness still using `local-development-key` under a production
   Next runtime; the harness now supplies a non-default E2E key to both services.
+- On 2026-06-23, the API security-header increment passed:
+  `PYTHONPATH=apps/api:ml .venv/bin/ruff check apps/api ml tools`,
+  `PYTHONPATH=apps/api:ml .venv/bin/pytest -q` (`90 passed, 3 skipped`),
+  `.venv/bin/python tools/check_deployment_readiness.py`, and
+  `git diff --check`.
 - The repository still has no committed `uv.lock`; a local `uv` wheel download
   was cancelled after sustained CDN throughput of roughly 34 kB/s. CI cache
   invalidation is explicitly keyed from the workspace dependency manifests in

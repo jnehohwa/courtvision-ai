@@ -18,6 +18,21 @@ rate_limiter = RateLimiter(
     shot_quality_limit=settings.shot_quality_rate_limit_requests,
     window_seconds=settings.rate_limit_window_seconds,
 )
+BASE_SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+    "Permissions-Policy": "accelerometer=(), camera=(), geolocation=(), microphone=(), payment=(), usb=()",
+    "Cross-Origin-Opener-Policy": "same-origin",
+}
+HSTS_HEADER = "max-age=63072000; includeSubDomains; preload"
+
+
+def security_headers() -> dict[str, str]:
+    headers = dict(BASE_SECURITY_HEADERS)
+    if settings.environment == "production":
+        headers["Strict-Transport-Security"] = HSTS_HEADER
+    return headers
 
 
 @asynccontextmanager
@@ -83,6 +98,13 @@ async def enforce_public_rate_limit(request: Request, call_next):
 
     response = await call_next(request)
     response.headers.update(headers)
+    return response
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.update(security_headers())
     return response
 
 

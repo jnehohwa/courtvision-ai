@@ -114,6 +114,11 @@ The API also validates production settings at startup. A production deployment
 must provide a non-default internal API key, hosted PostgreSQL and Redis URLs,
 HTTPS CORS origins, and trusted proxy headers.
 
+API responses include baseline browser safety headers, including nosniff,
+frame denial, no-referrer, a restrictive permissions policy, and
+same-origin opener isolation. HSTS is only added when the API runs with
+`COURTVISION_ENVIRONMENT=production`.
+
 The web replay proxy also refuses to call the private replay-start endpoint in
 production unless `COURTVISION_INTERNAL_API_URL` and a non-default
 `COURTVISION_INTERNAL_API_KEY` are configured. Local development keeps the

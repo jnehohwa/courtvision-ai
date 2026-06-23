@@ -57,6 +57,10 @@ The API validates production settings at startup. A production process will fail
 fast if it is still using the development internal key, loopback CORS origins,
 SQLite, loopback Redis, or untrusted proxy headers.
 
+The API also attaches baseline security headers to HTTP responses. HSTS is
+production-only so local HTTP development remains usable while hosted API
+responses advertise HTTPS transport once `COURTVISION_ENVIRONMENT=production`.
+
 `COURTVISION_ENABLE_DELAYED_LIVE` is explicitly `false` in the blueprint.
 Enable delayed polling only after source-lag and rate-limit testing passes, and
 keep the UI labels as delayed or replay data.
@@ -81,6 +85,7 @@ The check validates:
 - Ignored local Vercel project linkage.
 - Render Postgres, Redis-compatible storage, API, replay worker, and ingestion
   service wiring.
+- FastAPI baseline security headers and production-only HSTS source guardrail.
 - Manual Render gates for CORS and the shared internal API key.
 - Production environment flags and the delayed-live feature flag default.
 
