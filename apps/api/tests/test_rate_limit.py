@@ -31,6 +31,8 @@ async def test_in_memory_rate_limiter_resets_by_window():
     assert first.allowed and first.remaining == 1
     assert second.allowed and second.remaining == 0
     assert not blocked.allowed
+    assert blocked.retry_after_seconds == 60
+    assert blocked.reset_epoch_seconds == 180
 
     now = 180.0
     reset = await limiter.check(
@@ -89,6 +91,7 @@ def test_public_api_returns_rate_limit_headers_and_429(client):
 
     assert first.status_code == 200
     assert first.headers["x-ratelimit-limit"] == "2"
+    assert first.headers["x-ratelimit-reset"].isdigit()
     assert second.headers["x-ratelimit-remaining"] == "0"
     assert blocked.status_code == 429
     assert blocked.json() == {"detail": "Rate limit exceeded"}

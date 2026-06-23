@@ -15,6 +15,7 @@ class RateLimitDecision:
     limit: int
     remaining: int
     retry_after_seconds: int
+    reset_epoch_seconds: int
 
 
 class RateLimiter:
@@ -43,6 +44,7 @@ class RateLimiter:
         now = self.clock()
         window = int(now // self.window_seconds)
         retry_after = max(1, int(self.window_seconds - (now % self.window_seconds)))
+        reset_epoch_seconds = (window + 1) * self.window_seconds
         limit = (
             self.shot_quality_limit
             if bucket_name == "shot-quality"
@@ -72,6 +74,7 @@ class RateLimiter:
             limit=limit,
             remaining=max(limit - count, 0),
             retry_after_seconds=retry_after,
+            reset_epoch_seconds=reset_epoch_seconds,
         )
 
     async def reset(self) -> None:

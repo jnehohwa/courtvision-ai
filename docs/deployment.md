@@ -64,6 +64,10 @@ The API validates production settings at startup. A production process will fail
 fast if it is still using the development internal key, loopback CORS origins,
 SQLite, loopback Redis, or untrusted proxy headers.
 
+Public API routes are rate-limited and return limit, remaining, reset timestamp,
+and retry-after headers. Keep those headers visible through any proxy layer so
+clients can back off without guessing.
+
 The API also attaches baseline security headers to HTTP responses. HSTS is
 production-only so local HTTP development remains usable while hosted API
 responses advertise HTTPS transport once `COURTVISION_ENVIRONMENT=production`.
@@ -99,6 +103,7 @@ The check validates:
   service wiring.
 - FastAPI baseline security headers, no-store cache control, and
   production-only HSTS source guardrail.
+- Public API rate-limit reset headers.
 - Manual Render gates for CORS and the shared internal API key.
 - Production environment flags and the delayed-live feature flag default.
 

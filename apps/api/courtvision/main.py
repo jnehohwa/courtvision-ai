@@ -93,6 +93,7 @@ async def enforce_public_rate_limit(request: Request, call_next):
     headers = {
         "X-RateLimit-Limit": str(decision.limit),
         "X-RateLimit-Remaining": str(decision.remaining),
+        "X-RateLimit-Reset": str(decision.reset_epoch_seconds),
         "Retry-After": str(decision.retry_after_seconds),
     }
     if not decision.allowed:

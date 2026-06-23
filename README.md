@@ -114,6 +114,10 @@ The API also validates production settings at startup. A production deployment
 must provide a non-default internal API key, hosted PostgreSQL and Redis URLs,
 HTTPS CORS origins, and trusted proxy headers.
 
+Public API routes are rate-limited and include `X-RateLimit-Limit`,
+`X-RateLimit-Remaining`, `X-RateLimit-Reset`, and `Retry-After` headers so
+clients can degrade predictably.
+
 API responses include baseline browser safety headers, including nosniff,
 frame denial, no-referrer, a restrictive permissions policy, and
 same-origin opener isolation. HSTS is only added when the API runs with

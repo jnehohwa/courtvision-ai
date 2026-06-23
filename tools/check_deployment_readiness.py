@@ -359,12 +359,13 @@ def check_render(check: DeploymentCheck) -> None:
         and "Strict-Transport-Security" in api_main
         and "Cache-Control" in api_main
         and "no-store" in api_main
+        and "X-RateLimit-Reset" in api_main
         and "X-Content-Type-Options" in api_main
         and "X-Frame-Options" in api_main
         and "Referrer-Policy" in api_main
         and "Permissions-Policy" in api_main
         and "Cross-Origin-Opener-Policy" in api_main,
-        "FastAPI app must keep baseline security headers, no-store caching, and production-only HSTS",
+        "FastAPI app must keep baseline security headers, no-store caching, rate-limit reset headers, and production-only HSTS",
     )
 
 

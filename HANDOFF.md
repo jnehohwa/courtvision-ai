@@ -58,6 +58,8 @@ The latest complete local verification passed:
 - Production config guardrails: API settings fail fast on development internal
   keys, loopback CORS, SQLite, loopback Redis, or untrusted proxy headers when
   `COURTVISION_ENVIRONMENT=production`
+- API rate limiting: public REST routes expose limit, remaining, reset, and
+  retry-after headers on allowed and blocked responses
 - API security headers: all HTTP responses receive baseline browser safety
   headers and `Cache-Control: no-store`, with HSTS limited to production
 - Web security headers: all Next.js routes receive baseline browser safety
@@ -293,6 +295,12 @@ Completed in this continuation:
     request is rejected or the local replay bridge is unavailable, avoiding a
     stuck replaying state. The deployment preflight now guards the web client
     no-store fetch policy.
+65. Added an API rate-limit reset header. Rate-limit decisions now carry the
+    fixed-window reset epoch, and public REST responses include
+    `X-RateLimit-Reset` alongside limit, remaining, and retry-after headers on
+    allowed and blocked responses. Tests cover deterministic reset values and
+    the HTTP header, and the deployment preflight guards that reset-header
+    behavior remains present.
 
 ## Important Product Boundaries
 
@@ -443,6 +451,13 @@ solely to increase contribution activity.
   `./node_modules/.bin/next build`,
   `COURTVISION_E2E_FULL_STACK=1 PLAYWRIGHT_CHANNEL=chrome ./node_modules/.bin/playwright test`
   (`8 passed`), and `git diff --check`.
+- On 2026-06-23, the API rate-limit reset-header increment passed:
+  `PYTHONPATH=apps/api:ml .venv/bin/pytest apps/api/tests/test_rate_limit.py apps/api/tests/test_security_headers.py -q`
+  (`6 passed`),
+  `PYTHONPATH=apps/api:ml .venv/bin/ruff check apps/api ml tools`,
+  `.venv/bin/python tools/check_deployment_readiness.py`,
+  `PYTHONPATH=apps/api:ml .venv/bin/pytest -q`
+  (`90 passed, 3 skipped`), and `git diff --check`.
 - The repository still has no committed `uv.lock`; a local `uv` wheel download
   was cancelled after sustained CDN throughput of roughly 34 kB/s. CI cache
   invalidation is explicitly keyed from the workspace dependency manifests in
