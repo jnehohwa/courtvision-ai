@@ -10,6 +10,9 @@ const channelOverride = browserChannel
 const fullStack = process.env.COURTVISION_E2E_FULL_STACK === "1";
 const redisUrl =
   process.env.COURTVISION_E2E_REDIS_URL ?? "redis://127.0.0.1:6399/0";
+const internalApiKey =
+  process.env.COURTVISION_E2E_INTERNAL_API_KEY ??
+  "courtvision-e2e-internal-key-123456";
 const apiCommand =
   process.env.COURTVISION_E2E_API_COMMAND ??
   "../../.venv/bin/python -m courtvision.e2e_server";
@@ -38,6 +41,7 @@ export default defineConfig({
             COURTVISION_DATABASE_URL:
               "sqlite+aiosqlite:////tmp/courtvision-playwright.db",
             COURTVISION_REDIS_URL: redisUrl,
+            COURTVISION_INTERNAL_API_KEY: internalApiKey,
             COURTVISION_REPLAY_TICK_SECONDS: "0.03",
             COURTVISION_E2E_RUN_WORKER:
               process.env.COURTVISION_E2E_RUN_WORKER ?? "0",
@@ -55,7 +59,7 @@ export default defineConfig({
             NEXT_PUBLIC_WS_MAX_RECONNECT_ATTEMPTS: "2",
             NEXT_PUBLIC_LIVE_POLL_INTERVAL_MS: "100",
             COURTVISION_INTERNAL_API_URL: "http://127.0.0.1:8000",
-            COURTVISION_INTERNAL_API_KEY: "local-development-key",
+            COURTVISION_INTERNAL_API_KEY: internalApiKey,
           },
         },
       ]

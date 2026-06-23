@@ -90,6 +90,10 @@ Use that mode locally only when Redis is available. It proves the API queues
 replay commands through Redis, the worker publishes replay envelopes over Redis
 pub/sub, and the browser receives them through the FastAPI WebSocket.
 
+The Playwright harness shares an E2E-only non-default internal key between the
+API and Next.js replay proxy, so production-style web runs exercise the same
+private replay-start guardrail used by hosted deployments.
+
 ## Deployment
 
 The web app is ready to link as a Vercel project with `apps/web` as the project
@@ -109,6 +113,11 @@ secret gates, and replay-first feature flags from drifting.
 The API also validates production settings at startup. A production deployment
 must provide a non-default internal API key, hosted PostgreSQL and Redis URLs,
 HTTPS CORS origins, and trusted proxy headers.
+
+The web replay proxy also refuses to call the private replay-start endpoint in
+production unless `COURTVISION_INTERNAL_API_URL` and a non-default
+`COURTVISION_INTERNAL_API_KEY` are configured. Local development keeps the
+deterministic fallback key for the seeded replay fixture.
 
 ## Model promotion
 

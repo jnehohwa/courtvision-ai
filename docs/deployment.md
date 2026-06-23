@@ -27,6 +27,11 @@ COURTVISION_INTERNAL_API_KEY=<same value configured on the API>
 `NEXT_PUBLIC_*` values are compiled into the client bundle, so changing them
 requires a new Vercel deployment.
 
+The server-side replay proxy rejects production replay-start requests with a
+clear `503` unless the internal Render URL and shared internal key are set. It
+also rejects the development replay key in production, matching the API startup
+guardrail.
+
 Do not commit `.vercel/project.json`; local Vercel linkage belongs in the
 ignored `.vercel/` directory. If you later add a Vercel CLI deploy workflow,
 keep `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID` in GitHub

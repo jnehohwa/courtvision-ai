@@ -1,6 +1,6 @@
 # CourtVision AI Handoff
 
-Last updated: 2026-06-22
+Last updated: 2026-06-23
 
 ## Current State
 
@@ -58,6 +58,9 @@ The latest complete local verification passed:
 - Production config guardrails: API settings fail fast on development internal
   keys, loopback CORS, SQLite, loopback Redis, or untrusted proxy headers when
   `COURTVISION_ENVIRONMENT=production`
+- Web replay proxy guardrail: production replay-start requests return a clear
+  `503` unless the internal Render URL and a non-default internal key are
+  configured
 
 ## Current Increment
 
@@ -245,6 +248,17 @@ Completed in this continuation:
     or non-HTTPS CORS origins, loopback CORS hosts, non-PostgreSQL database
     URLs, loopback Redis URLs, or disabled trusted proxy headers. Added config
     tests for each rejection path plus the accepted hosted production shape.
+60. Hardened the Next.js replay proxy. The server route now requires explicit
+    `COURTVISION_INTERNAL_API_URL` and a non-default
+    `COURTVISION_INTERNAL_API_KEY` in production before it will call the
+    private replay-start endpoint, while preserving local replay defaults for
+    development. Added route tests for missing game IDs, production
+    misconfiguration, development-key rejection, URL normalization, and
+    successful production forwarding. The deployment preflight now checks that
+    the replay proxy keeps this production guardrail in place. The Playwright
+    full-stack harness now shares an E2E-only non-default internal key between
+    the API and Next.js so production-style replay tests keep exercising the
+    private replay-start boundary.
 
 ## Important Product Boundaries
 
@@ -351,6 +365,17 @@ solely to increase contribution activity.
   in-process fallback. The `e2e-redis` CI job covers the production-style Redis
   queue/pub-sub replay path; local Redis-backed Playwright was not run on this
   machine because `redis-server` is not installed.
+- On 2026-06-23, the replay-proxy hardening increment passed:
+  `PYTHONPATH=apps/api:ml .venv/bin/ruff check apps/api ml tools`,
+  `PYTHONPATH=apps/api:ml .venv/bin/pytest -q` (`87 passed, 3 skipped`),
+  `.venv/bin/python tools/check_deployment_readiness.py`,
+  `./node_modules/.bin/eslint .`, `./node_modules/.bin/tsc --noEmit`,
+  `./node_modules/.bin/vitest run` (`8 passed`),
+  `./node_modules/.bin/next build`, and
+  `COURTVISION_E2E_FULL_STACK=1 PLAYWRIGHT_CHANNEL=chrome ./node_modules/.bin/playwright test`
+  (`8 passed`). The first Playwright attempt was intentionally rerun after it
+  exposed the harness still using `local-development-key` under a production
+  Next runtime; the harness now supplies a non-default E2E key to both services.
 - The repository still has no committed `uv.lock`; a local `uv` wheel download
   was cancelled after sustained CDN throughput of roughly 34 kB/s. CI cache
   invalidation is explicitly keyed from the workspace dependency manifests in

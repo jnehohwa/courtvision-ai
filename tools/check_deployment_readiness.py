@@ -151,6 +151,9 @@ def check_vercel(check: DeploymentCheck) -> None:
     web_package = read_json(ROOT / "apps" / "web" / "package.json")
     root_package = read_json(ROOT / "package.json")
     next_config = read_text(ROOT / "apps" / "web" / "next.config.ts")
+    replay_route = read_text(
+        ROOT / "apps" / "web" / "src" / "app" / "api" / "replay" / "route.ts"
+    )
     env_example = read_text(ROOT / ".env.example")
     gitignore = read_text(ROOT / ".gitignore")
 
@@ -183,6 +186,15 @@ def check_vercel(check: DeploymentCheck) -> None:
             f"{env_key}=" in env_example,
             f".env.example must document {env_key}",
         )
+    check.require(
+        'env.NODE_ENV === "production"' in replay_route
+        and "COURTVISION_INTERNAL_API_URL" in replay_route
+        and "COURTVISION_INTERNAL_API_KEY" in replay_route
+        and "DEVELOPMENT_INTERNAL_API_KEY" in replay_route
+        and "MINIMUM_PRODUCTION_KEY_LENGTH" in replay_route
+        and "Replay service is not configured" in replay_route,
+        "apps/web replay proxy must reject unconfigured or development-key production replay starts",
+    )
     check.require(
         ".vercel/" in gitignore,
         ".gitignore must exclude local Vercel project linkage",
