@@ -5,6 +5,7 @@ import json
 from collections import defaultdict
 from uuid import uuid4
 
+import structlog
 from fastapi import WebSocket
 from redis.asyncio import Redis
 from redis.asyncio.client import PubSub
@@ -23,6 +24,7 @@ if redis.call("GET", KEYS[2]) == ARGV[2] then
 end
 return removed
 """
+logger = structlog.get_logger()
 
 
 class ConnectionManager:
@@ -41,7 +43,8 @@ class ConnectionManager:
 
     async def broadcast(self, envelope: WebSocketEnvelope) -> None:
         stale_connections: list[WebSocket] = []
-        for connection in tuple(self._connections[envelope.game_id]):
+        connections = tuple(self._connections[envelope.game_id])
+        for connection in connections:
             try:
                 await connection.send_json(envelope.model_dump(mode="json"))
             except Exception:
@@ -51,6 +54,10 @@ class ConnectionManager:
             async with self._lock:
                 for connection in stale_connections:
                     self._connections[envelope.game_id].discard(connection)
+
+    async def count(self, game_id: str) -> int:
+        async with self._lock:
+            return len(self._connections[game_id])
 
 
 connection_manager = ConnectionManager()
@@ -72,13 +79,16 @@ class EventBus:
             await redis.ping()
         except Exception:
             await redis.aclose()
+            logger.warning("event_bus_unavailable", redis_url=settings.redis_url)
             return False
 
         self.redis = redis
+        logger.info("event_bus_connected", subscribe=subscribe)
         if subscribe:
             self._pubsub = redis.pubsub()
             await self._pubsub.subscribe(EVENT_CHANNEL)
             self._listener = asyncio.create_task(self._listen())
+            logger.info("event_bus_subscribed", channel=EVENT_CHANNEL)
         return True
 
     async def stop(self) -> None:
@@ -100,8 +110,20 @@ class EventBus:
                     EVENT_CHANNEL,
                     envelope.model_dump_json(),
                 )
+                logger.info(
+                    "event_bus_published",
+                    event_type=envelope.type,
+                    game_id=envelope.game_id,
+                    sequence=envelope.sequence,
+                )
                 return
             except Exception:
+                logger.exception(
+                    "event_bus_publish_failed",
+                    event_type=envelope.type,
+                    game_id=envelope.game_id,
+                    sequence=envelope.sequence,
+                )
                 await self.stop()
         await connection_manager.broadcast(envelope)
 
@@ -126,6 +148,7 @@ class EventBus:
         except Exception:
             await self._delete_lock_if_owned(lock_key, lock_token)
             raise
+        logger.info("replay_enqueued", game_id=game_id, tick_seconds=tick_seconds)
         return True
 
     async def acknowledge_replay(
@@ -169,10 +192,19 @@ class EventBus:
                 if message["type"] != "message":
                     continue
                 envelope = WebSocketEnvelope.model_validate_json(message["data"])
+                connection_count = await connection_manager.count(envelope.game_id)
+                logger.info(
+                    "event_bus_received",
+                    event_type=envelope.type,
+                    game_id=envelope.game_id,
+                    sequence=envelope.sequence,
+                    connection_count=connection_count,
+                )
                 await connection_manager.broadcast(envelope)
         except asyncio.CancelledError:
             raise
         except Exception:
+            logger.exception("event_bus_listener_failed", channel=EVENT_CHANNEL)
             if self._pubsub:
                 await self._pubsub.aclose()
                 self._pubsub = None

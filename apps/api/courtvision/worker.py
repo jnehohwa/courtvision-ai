@@ -46,6 +46,11 @@ async def process_replay_command(raw_command: str) -> None:
         await event_bus.discard_replay(raw_command)
         return
 
+    logger.info(
+        "replay_command_received",
+        game_id=command.game_id,
+        tick_seconds=command.tick_seconds,
+    )
     try:
         event_count = await replay_coordinator.run_game(
             command.game_id,

@@ -506,6 +506,19 @@ solely to increase contribution activity.
   CI run `28541657308` still failed only in `e2e-redis`, while backend, web,
   Redis integration, non-Redis e2e, and iOS all passed; this fix targets that
   isolated Redis browser lane.
+- On 2026-07-01, the Redis replay observability increment added event-bus
+  lifecycle logs, replay queue/receive logs, connected-client counts, worker
+  command logging, and plain E2E launcher markers for Redis reset, worker
+  start, worker ready, and worker exit. Focused verification passed:
+  `PYTHONPATH=apps/api:ml .venv/bin/pytest apps/api/tests/test_broadcast.py apps/api/tests/test_e2e_server.py apps/api/tests/test_worker_redis_integration.py -q`
+  (`5 passed, 3 skipped`),
+  `PYTHONPATH=apps/api:ml .venv/bin/ruff check apps/api ml tools`,
+  `PYTHONPATH=apps/api:ml .venv/bin/pytest -q`
+  (`93 passed, 3 skipped`), and `git diff --check`. The latest CI run
+  inspected before this increment was `28542591307`: backend, web, Redis
+  integration, non-Redis e2e, and iOS passed, but `e2e-redis` still failed
+  with zero `play_added` frames and no visible worker/event-bus lifecycle lines
+  in the Actions log.
 - The repository still has no committed `uv.lock`; a local `uv` wheel download
   was cancelled after sustained CDN throughput of roughly 34 kB/s. CI cache
   invalidation is explicitly keyed from the workspace dependency manifests in
