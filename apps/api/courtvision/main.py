@@ -26,6 +26,12 @@ BASE_SECURITY_HEADERS = {
     "Cross-Origin-Opener-Policy": "same-origin",
 }
 HSTS_HEADER = "max-age=63072000; includeSubDomains; preload"
+RATE_LIMIT_HEADERS = [
+    "X-RateLimit-Limit",
+    "X-RateLimit-Remaining",
+    "X-RateLimit-Reset",
+    "Retry-After",
+]
 
 
 def security_headers() -> dict[str, str]:
@@ -66,6 +72,7 @@ app.add_middleware(
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Content-Type"],
+    expose_headers=RATE_LIMIT_HEADERS,
 )
 
 

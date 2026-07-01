@@ -96,3 +96,23 @@ def test_public_api_returns_rate_limit_headers_and_429(client):
     assert blocked.status_code == 429
     assert blocked.json() == {"detail": "Rate limit exceeded"}
     assert int(blocked.headers["retry-after"]) >= 1
+
+
+def test_cors_exposes_rate_limit_headers_to_browser_clients(client):
+    response = client.get(
+        "/api/v1/games",
+        params={"date": "2026-06-14"},
+        headers={"Origin": "http://localhost:3000"},
+    )
+
+    assert response.status_code == 200
+    exposed_headers = {
+        header.strip().lower()
+        for header in response.headers["access-control-expose-headers"].split(",")
+    }
+    assert {
+        "x-ratelimit-limit",
+        "x-ratelimit-remaining",
+        "x-ratelimit-reset",
+        "retry-after",
+    }.issubset(exposed_headers)

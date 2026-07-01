@@ -59,7 +59,8 @@ The latest complete local verification passed:
   keys, loopback CORS, SQLite, loopback Redis, or untrusted proxy headers when
   `COURTVISION_ENVIRONMENT=production`
 - API rate limiting: public REST routes expose limit, remaining, reset, and
-  retry-after headers on allowed and blocked responses
+  retry-after headers on allowed and blocked responses, and CORS exposes those
+  headers to allowed browser clients
 - API security headers: all HTTP responses receive baseline browser safety
   headers and `Cache-Control: no-store`, with HSTS limited to production
 - Web security headers: all Next.js routes receive baseline browser safety
@@ -301,6 +302,11 @@ Completed in this continuation:
     allowed and blocked responses. Tests cover deterministic reset values and
     the HTTP header, and the deployment preflight guards that reset-header
     behavior remains present.
+66. Exposed API rate-limit headers through CORS. The FastAPI CORS middleware
+    now makes `X-RateLimit-Limit`, `X-RateLimit-Remaining`,
+    `X-RateLimit-Reset`, and `Retry-After` readable to allowed browser origins.
+    Tests cover the `Access-Control-Expose-Headers` response, and the
+    deployment preflight guards the exposed-header wiring.
 
 ## Important Product Boundaries
 
@@ -458,6 +464,13 @@ solely to increase contribution activity.
   `.venv/bin/python tools/check_deployment_readiness.py`,
   `PYTHONPATH=apps/api:ml .venv/bin/pytest -q`
   (`90 passed, 3 skipped`), and `git diff --check`.
+- On 2026-07-01, the CORS-exposed rate-limit headers increment passed:
+  `PYTHONPATH=apps/api:ml .venv/bin/pytest apps/api/tests/test_rate_limit.py apps/api/tests/test_security_headers.py -q`
+  (`7 passed`),
+  `PYTHONPATH=apps/api:ml .venv/bin/ruff check apps/api ml tools`,
+  `.venv/bin/python tools/check_deployment_readiness.py`,
+  `PYTHONPATH=apps/api:ml .venv/bin/pytest -q`
+  (`91 passed, 3 skipped`), and `git diff --check`.
 - The repository still has no committed `uv.lock`; a local `uv` wheel download
   was cancelled after sustained CDN throughput of roughly 34 kB/s. CI cache
   invalidation is explicitly keyed from the workspace dependency manifests in

@@ -66,7 +66,8 @@ SQLite, loopback Redis, or untrusted proxy headers.
 
 Public API routes are rate-limited and return limit, remaining, reset timestamp,
 and retry-after headers. Keep those headers visible through any proxy layer so
-clients can back off without guessing.
+clients can back off without guessing. The API CORS middleware exposes those
+headers to allowed browser origins.
 
 The API also attaches baseline security headers to HTTP responses. HSTS is
 production-only so local HTTP development remains usable while hosted API
@@ -103,7 +104,7 @@ The check validates:
   service wiring.
 - FastAPI baseline security headers, no-store cache control, and
   production-only HSTS source guardrail.
-- Public API rate-limit reset headers.
+- Browser-visible public API rate-limit headers.
 - Manual Render gates for CORS and the shared internal API key.
 - Production environment flags and the delayed-live feature flag default.
 

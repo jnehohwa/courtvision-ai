@@ -116,7 +116,8 @@ HTTPS CORS origins, and trusted proxy headers.
 
 Public API routes are rate-limited and include `X-RateLimit-Limit`,
 `X-RateLimit-Remaining`, `X-RateLimit-Reset`, and `Retry-After` headers so
-clients can degrade predictably.
+clients can degrade predictably. Those headers are also exposed through CORS
+for the allowed web origins.
 
 API responses include baseline browser safety headers, including nosniff,
 frame denial, no-referrer, a restrictive permissions policy, and
