@@ -532,6 +532,19 @@ solely to increase contribution activity.
   could not complete because pnpm repeatedly retried slow/failed registry
   downloads while recreating `node_modules`; the web and e2e checks are expected
   to be verified by GitHub Actions after push.
+- On 2026-07-01, CI run `28543598798` exposed the Redis E2E root cause: the
+  replay worker started, reset Redis, became ready, then exited before tests
+  began because the blocking `BLMOVE` read hit `redis.exceptions.TimeoutError`.
+  That left the replay lock in Redis, so `/api/replay` returned
+  `{status: "already_running"}` and no browser saw `play_added` frames. The fix
+  explicitly sets `socket_timeout=None` on the event-bus Redis client and keeps
+  the focused regression in `apps/api/tests/test_broadcast.py`. Verification
+  passed:
+  `PYTHONPATH=apps/api:ml .venv/bin/pytest apps/api/tests/test_broadcast.py apps/api/tests/test_e2e_server.py apps/api/tests/test_worker_redis_integration.py -q`
+  (`5 passed, 3 skipped`),
+  `PYTHONPATH=apps/api:ml .venv/bin/ruff check apps/api ml tools`,
+  `PYTHONPATH=apps/api:ml .venv/bin/pytest -q`
+  (`93 passed, 3 skipped`), and `git diff --check`.
 - The repository still has no committed `uv.lock`; a local `uv` wheel download
   was cancelled after sustained CDN throughput of roughly 34 kB/s. CI cache
   invalidation is explicitly keyed from the workspace dependency manifests in

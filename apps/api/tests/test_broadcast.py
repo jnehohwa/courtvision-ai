@@ -30,5 +30,5 @@ async def test_event_bus_redis_client_allows_idle_blocking_commands(monkeypatch)
 
     assert calls
     assert calls[0]["socket_connect_timeout"] == 0.5
+    assert calls[0]["socket_timeout"] is None
     assert calls[0]["decode_responses"] is True
-    assert "socket_timeout" not in calls[0]

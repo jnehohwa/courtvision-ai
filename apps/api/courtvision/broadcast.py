@@ -73,6 +73,7 @@ class EventBus:
         redis = Redis.from_url(
             settings.redis_url,
             socket_connect_timeout=0.5,
+            socket_timeout=None,
             decode_responses=True,
         )
         try:
