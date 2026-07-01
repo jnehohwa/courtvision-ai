@@ -519,6 +519,19 @@ solely to increase contribution activity.
   integration, non-Redis e2e, and iOS passed, but `e2e-redis` still failed
   with zero `play_added` frames and no visible worker/event-bus lifecycle lines
   in the Actions log.
+- On 2026-07-01, the Redis replay diagnostic follow-up moved E2E launcher and
+  worker markers to stderr so Playwright web-server logs expose them, made the
+  web replay client require a `{status: "started"}` response instead of any
+  HTTP 2xx, and made the full-stack replay tests assert that `/api/replay`
+  actually starts a replay. Backend verification passed:
+  `PYTHONPATH=apps/api:ml .venv/bin/pytest apps/api/tests/test_e2e_server.py -q`
+  (`4 passed`),
+  `PYTHONPATH=apps/api:ml .venv/bin/ruff check apps/api ml tools`,
+  `PYTHONPATH=apps/api:ml .venv/bin/pytest -q`
+  (`93 passed, 3 skipped`), and `git diff --check`. Local web vitest/eslint
+  could not complete because pnpm repeatedly retried slow/failed registry
+  downloads while recreating `node_modules`; the web and e2e checks are expected
+  to be verified by GitHub Actions after push.
 - The repository still has no committed `uv.lock`; a local `uv` wheel download
   was cancelled after sustained CDN throughput of roughly 34 kB/s. CI cache
   invalidation is explicitly keyed from the workspace dependency manifests in

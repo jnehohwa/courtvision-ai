@@ -38,5 +38,7 @@ export async function startReplay(gameId: string): Promise<boolean> {
     body: JSON.stringify({ gameId }),
     cache: "no-store",
   });
-  return response.ok;
+  if (!response.ok) return false;
+  const payload = (await response.json()) as { status?: string };
+  return payload.status === "started";
 }

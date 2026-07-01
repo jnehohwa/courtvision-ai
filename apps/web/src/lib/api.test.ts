@@ -52,7 +52,12 @@ describe("fetchLiveSnapshot", () => {
 
 describe("startReplay", () => {
   it("starts replay through the local proxy without browser caching", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 202 }));
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ status: "started" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(startReplay("cv-2026-bos-nyk")).resolves.toBe(true);
@@ -67,6 +72,18 @@ describe("startReplay", () => {
 
   it("returns false when replay start is rejected", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 503 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(startReplay("cv-2026-bos-nyk")).resolves.toBe(false);
+  });
+
+  it("returns false when the replay worker reports an existing run", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ status: "already_running" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(startReplay("cv-2026-bos-nyk")).resolves.toBe(false);

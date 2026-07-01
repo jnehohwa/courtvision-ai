@@ -60,7 +60,7 @@ def reset_redis_database() -> None:
     if settings.environment != "e2e":
         raise RuntimeError("The E2E Redis reset can only run in the e2e environment")
     asyncio.run(_reset_redis_database())
-    print("courtvision_e2e_redis_reset", flush=True)
+    print("courtvision_e2e_redis_reset", file=sys.stderr, flush=True)
 
 
 def _drain_worker_output(
@@ -68,7 +68,7 @@ def _drain_worker_output(
     output_queue: "queue.Queue[str]",
 ) -> None:
     for line in stream:
-        print(line, end="", flush=True)
+        print(line, end="", file=sys.stderr, flush=True)
         output_queue.put(line)
 
 
@@ -102,7 +102,7 @@ def start_worker_process() -> subprocess.Popen[str]:
         except queue.Empty:
             continue
         if WORKER_READY_MARKER in line:
-            print("courtvision_e2e_worker_ready", flush=True)
+            print("courtvision_e2e_worker_ready", file=sys.stderr, flush=True)
             return worker_process
 
     worker_process.terminate()
@@ -118,6 +118,7 @@ def watch_worker_process(worker_process: subprocess.Popen[str]) -> None:
     return_code = worker_process.wait()
     print(
         f"courtvision_e2e_worker_exited return_code={return_code}",
+        file=sys.stderr,
         flush=True,
     )
 
@@ -126,7 +127,7 @@ def main() -> None:
     prepare_database()
     worker_process: subprocess.Popen[str] | None = None
     if os.environ.get("COURTVISION_E2E_RUN_WORKER") == "1":
-        print("courtvision_e2e_worker_starting", flush=True)
+        print("courtvision_e2e_worker_starting", file=sys.stderr, flush=True)
         reset_redis_database()
         worker_process = start_worker_process()
         threading.Thread(

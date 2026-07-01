@@ -1,6 +1,18 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 
 const fullStack = process.env.COURTVISION_E2E_FULL_STACK === "1";
+
+async function clickStartReplayAndExpectStarted(page: Page) {
+  const replayResponsePromise = page.waitForResponse(
+    (response) => response.url().endsWith("/api/replay"),
+  );
+  await page.getByRole("button", { name: "Start replay" }).click();
+  const replayResponse = await replayResponsePromise;
+  expect(replayResponse.ok()).toBe(true);
+  await expect(replayResponse.json()).resolves.toMatchObject({
+    status: "started",
+  });
+}
 
 test("shows the dashboard and selects a shot", async ({ page }) => {
   await page.goto("/");
@@ -53,7 +65,7 @@ test("streams a complete replay from FastAPI over WebSockets", async ({ page }) 
   });
 
   await expect(page.getByText("WebSocket connected")).toBeVisible();
-  await page.getByRole("button", { name: "Start replay" }).click();
+  await clickStartReplayAndExpectStarted(page);
 
   await expect
     .poll(
@@ -112,7 +124,7 @@ test("recovers missed replay events after a WebSocket disconnect", async ({ page
 
   await page.goto("/");
   await expect(page.getByText("WebSocket connected")).toBeVisible();
-  await page.getByRole("button", { name: "Start replay" }).click();
+  await clickStartReplayAndExpectStarted(page);
 
   await expect
     .poll(() => connectionCount, { timeout: 10_000 })
