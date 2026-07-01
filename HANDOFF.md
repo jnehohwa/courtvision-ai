@@ -63,7 +63,8 @@ The latest complete local verification passed:
   headers to allowed browser clients
 - Redis E2E harness: the Playwright API launcher resets the dedicated E2E
   Redis database, waits for replay-worker readiness before serving `/health`,
-  and streams worker output into CI logs for queued replay debugging
+  streams worker output into CI logs for queued replay debugging, and uses a
+  Redis client configuration that allows idle blocking replay queue reads
 - API security headers: all HTTP responses receive baseline browser safety
   headers and `Cache-Control: no-store`, with HSTS limited to production
 - Web security headers: all Next.js routes receive baseline browser safety
@@ -316,6 +317,12 @@ Completed in this continuation:
     `replay_worker_ready` marker before exposing the API as healthy, and fails
     fast if the worker exits or never becomes ready. Tests cover the readiness
     wrapper and protect the Redis reset from non-E2E environments.
+68. Fixed the Redis replay worker idle timeout. The shared EventBus Redis
+    client no longer sets a one-second command socket timeout, which could kill
+    the replay worker while it blocked on the queue during browser/server
+    startup. Health checks still use their own short Redis timeout. A focused
+    regression test now verifies the EventBus client keeps blocking commands
+    free of `socket_timeout`.
 
 ## Important Product Boundaries
 
@@ -490,6 +497,15 @@ solely to increase contribution activity.
   and the non-Redis Playwright rerun was stopped before app startup because
   pnpm had to recreate `node_modules` and registry downloads repeatedly timed
   out or retried.
+- On 2026-07-01, the Redis replay worker idle-timeout fix passed:
+  `PYTHONPATH=apps/api:ml .venv/bin/pytest apps/api/tests/test_broadcast.py apps/api/tests/test_e2e_server.py apps/api/tests/test_worker_redis_integration.py -q`
+  (`5 passed, 3 skipped`),
+  `PYTHONPATH=apps/api:ml .venv/bin/ruff check apps/api ml tools`,
+  `PYTHONPATH=apps/api:ml .venv/bin/pytest -q`
+  (`93 passed, 3 skipped`), and `git diff --check`. The immediately preceding
+  CI run `28541657308` still failed only in `e2e-redis`, while backend, web,
+  Redis integration, non-Redis e2e, and iOS all passed; this fix targets that
+  isolated Redis browser lane.
 - The repository still has no committed `uv.lock`; a local `uv` wheel download
   was cancelled after sustained CDN throughput of roughly 34 kB/s. CI cache
   invalidation is explicitly keyed from the workspace dependency manifests in
