@@ -545,6 +545,10 @@ solely to increase contribution activity.
   `PYTHONPATH=apps/api:ml .venv/bin/ruff check apps/api ml tools`,
   `PYTHONPATH=apps/api:ml .venv/bin/pytest -q`
   (`93 passed, 3 skipped`), and `git diff --check`.
+- On 2026-07-01, GitHub Actions run `28543785381` passed on `main` after the
+  Redis read-timeout fix: backend, web, Redis integration, non-Redis e2e,
+  Redis-backed e2e, and iOS all completed successfully. This is the safe resume
+  point for the next increment.
 - The repository still has no committed `uv.lock`; a local `uv` wheel download
   was cancelled after sustained CDN throughput of roughly 34 kB/s. CI cache
   invalidation is explicitly keyed from the workspace dependency manifests in
