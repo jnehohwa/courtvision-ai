@@ -1,6 +1,6 @@
 # CourtVision AI Handoff
 
-Last updated: 2026-06-23
+Last updated: 2026-07-01
 
 ## Current State
 
@@ -61,6 +61,9 @@ The latest complete local verification passed:
 - API rate limiting: public REST routes expose limit, remaining, reset, and
   retry-after headers on allowed and blocked responses, and CORS exposes those
   headers to allowed browser clients
+- Redis E2E harness: the Playwright API launcher resets the dedicated E2E
+  Redis database, waits for replay-worker readiness before serving `/health`,
+  and streams worker output into CI logs for queued replay debugging
 - API security headers: all HTTP responses receive baseline browser safety
   headers and `Cache-Control: no-store`, with HSTS limited to production
 - Web security headers: all Next.js routes receive baseline browser safety
@@ -307,6 +310,12 @@ Completed in this continuation:
     `X-RateLimit-Reset`, and `Retry-After` readable to allowed browser origins.
     Tests cover the `Access-Control-Expose-Headers` response, and the
     deployment preflight guards the exposed-header wiring.
+67. Hardened the Redis-backed E2E replay harness. The isolated Playwright API
+    launcher now flushes the dedicated E2E Redis database before worker tests,
+    starts the replay worker with captured output, waits for the
+    `replay_worker_ready` marker before exposing the API as healthy, and fails
+    fast if the worker exits or never becomes ready. Tests cover the readiness
+    wrapper and protect the Redis reset from non-E2E environments.
 
 ## Important Product Boundaries
 
@@ -471,6 +480,16 @@ solely to increase contribution activity.
   `.venv/bin/python tools/check_deployment_readiness.py`,
   `PYTHONPATH=apps/api:ml .venv/bin/pytest -q`
   (`91 passed, 3 skipped`), and `git diff --check`.
+- On 2026-07-01, the Redis E2E harness hardening increment passed:
+  `PYTHONPATH=apps/api:ml .venv/bin/pytest apps/api/tests/test_e2e_server.py apps/api/tests/test_worker_redis_integration.py -q`
+  (`4 passed, 3 skipped`),
+  `PYTHONPATH=apps/api:ml .venv/bin/ruff check apps/api ml tools`, and
+  `PYTHONPATH=apps/api:ml .venv/bin/pytest -q`
+  (`92 passed, 3 skipped`). Local Redis-backed Playwright could not be run:
+  `redis-server` is not installed, Docker exists but the daemon is not running,
+  and the non-Redis Playwright rerun was stopped before app startup because
+  pnpm had to recreate `node_modules` and registry downloads repeatedly timed
+  out or retried.
 - The repository still has no committed `uv.lock`; a local `uv` wheel download
   was cancelled after sustained CDN throughput of roughly 34 kB/s. CI cache
   invalidation is explicitly keyed from the workspace dependency manifests in

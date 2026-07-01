@@ -2,17 +2,25 @@ from __future__ import annotations
 
 import asyncio
 import os
+import queue
 import subprocess
 import sys
+import threading
+import time
 from pathlib import Path
+from typing import TextIO
 
 import uvicorn
 from alembic import command
 from alembic.config import Config
+from redis.asyncio import Redis
 from sqlalchemy.engine import make_url
 
 from courtvision.config import settings
 from courtvision.seed import seed_database
+
+WORKER_READY_MARKER = "replay_worker_ready"
+WORKER_READY_TIMEOUT_SECONDS = 10
 
 
 def prepare_database() -> None:
@@ -40,16 +48,76 @@ def prepare_database() -> None:
     asyncio.run(seed_database())
 
 
+async def _reset_redis_database() -> None:
+    redis = Redis.from_url(settings.redis_url)
+    try:
+        await redis.flushdb()
+    finally:
+        await redis.aclose()
+
+
+def reset_redis_database() -> None:
+    if settings.environment != "e2e":
+        raise RuntimeError("The E2E Redis reset can only run in the e2e environment")
+    asyncio.run(_reset_redis_database())
+
+
+def _drain_worker_output(
+    stream: TextIO,
+    output_queue: "queue.Queue[str]",
+) -> None:
+    for line in stream:
+        print(line, end="", flush=True)
+        output_queue.put(line)
+
+
+def start_worker_process() -> subprocess.Popen[str]:
+    worker_process = subprocess.Popen(
+        [sys.executable, "-m", "courtvision.worker"],
+        cwd=Path(__file__).resolve().parents[1],
+        env={**os.environ, "PYTHONUNBUFFERED": "1"},
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+    )
+    if worker_process.stdout is None:
+        worker_process.terminate()
+        raise RuntimeError("Replay worker stdout was not captured")
+
+    output_queue: queue.Queue[str] = queue.Queue()
+    threading.Thread(
+        target=_drain_worker_output,
+        args=(worker_process.stdout, output_queue),
+        daemon=True,
+    ).start()
+
+    deadline = time.monotonic() + WORKER_READY_TIMEOUT_SECONDS
+    while time.monotonic() < deadline:
+        if worker_process.poll() is not None:
+            raise RuntimeError("Replay worker exited before becoming ready")
+        try:
+            line = output_queue.get(timeout=0.1)
+        except queue.Empty:
+            continue
+        if WORKER_READY_MARKER in line:
+            return worker_process
+
+    worker_process.terminate()
+    try:
+        worker_process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        worker_process.kill()
+        worker_process.wait()
+    raise RuntimeError("Replay worker did not become ready before timeout")
+
+
 def main() -> None:
     prepare_database()
     worker_process: subprocess.Popen[str] | None = None
     if os.environ.get("COURTVISION_E2E_RUN_WORKER") == "1":
-        worker_process = subprocess.Popen(
-            [sys.executable, "-m", "courtvision.worker"],
-            cwd=Path(__file__).resolve().parents[1],
-            env={**os.environ, "PYTHONUNBUFFERED": "1"},
-            text=True,
-        )
+        reset_redis_database()
+        worker_process = start_worker_process()
 
     try:
         uvicorn.run(
