@@ -643,6 +643,14 @@ solely to increase contribution activity.
   `Game not found` or `Rate limit exceeded` instead of only a numeric status.
   The local CoreSimulator warning still appears, but the app and XCTest bundle
   compile successfully with the generic simulator destination.
+- On 2026-07-02, the web API diagnostics increment added `ApiRequestError` and
+  focused tests so failed live snapshot requests preserve FastAPI JSON `detail`
+  messages while retaining a fallback for empty/non-JSON responses. Local
+  verification passed `git diff --check` and a Node syntax sanity check for
+  `throw await`. `pnpm --filter @courtvision/web exec vitest run src/lib/api.test.ts`
+  did not reach Vitest because the workspace install timed out while retrying
+  slow registry tarball downloads for packages such as Next and Playwright; the
+  pushed GitHub Actions web job is the expected verifier for this increment.
 - On 2026-07-01, the Redis replay diagnostic follow-up moved E2E launcher and
   worker markers to stderr so Playwright web-server logs expose them, made the
   web replay client require a `{status: "started"}` response instead of any

@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { fallbackGames, fallbackSnapshot } from "@/lib/fixtures";
-import { fetchGames, fetchLiveSnapshot, startReplay } from "./api";
+import type { ApiRequestError } from "./api";
+import {
+  fetchGames,
+  fetchLiveSnapshot,
+  startReplay,
+} from "./api";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -47,6 +52,33 @@ describe("fetchLiveSnapshot", () => {
       "http://localhost:8000/api/v1/games/cv-2026-bos-nyk/live",
       { cache: "no-store", signal: controller.signal },
     );
+  });
+
+  it("surfaces backend error details for failed snapshot requests", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ detail: "Game not found" }), {
+        status: 404,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(fetchLiveSnapshot("missing-game")).rejects.toMatchObject({
+      name: "ApiRequestError",
+      message: "Game not found",
+      status: 404,
+    } satisfies Partial<ApiRequestError>);
+  });
+
+  it("uses a fallback message when failed snapshot responses are not JSON", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 503 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(fetchLiveSnapshot("cv-2026-bos-nyk")).rejects.toMatchObject({
+      name: "ApiRequestError",
+      message: "Live snapshot request failed",
+      status: 503,
+    } satisfies Partial<ApiRequestError>);
   });
 });
 
