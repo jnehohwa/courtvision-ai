@@ -20,7 +20,7 @@ struct AppView: View {
             }
 
             NavigationStack {
-                AboutView()
+                AboutView(apiClient: appModel.apiClient)
             }
             .tabItem {
                 Label("About", systemImage: "info.circle")

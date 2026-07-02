@@ -21,6 +21,14 @@ struct APIClient: Sendable {
 
     let baseURL: URL
     let session: URLSession
+    var usesLocalBackend: Bool {
+        let host = baseURL.host?.lowercased()
+        return host == "127.0.0.1" || host == "localhost"
+    }
+
+    var configurationLabel: String {
+        usesLocalBackend ? "Local fixture API" : "Hosted API"
+    }
 
     init(
         baseURL: URL = APIClient.defaultBaseURL,

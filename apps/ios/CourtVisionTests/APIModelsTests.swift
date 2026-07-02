@@ -178,6 +178,16 @@ final class APIModelsTests: XCTestCase {
         XCTAssertEqual(url.absoluteString, "http://127.0.0.1:8000")
     }
 
+    func testAPIClientLabelsLocalAndHostedBackends() {
+        let localClient = APIClient(baseURL: URL(string: "http://127.0.0.1:8000")!)
+        let hostedClient = APIClient(baseURL: URL(string: "https://api.courtvision.test")!)
+
+        XCTAssertTrue(localClient.usesLocalBackend)
+        XCTAssertEqual(localClient.configurationLabel, "Local fixture API")
+        XCTAssertFalse(hostedClient.usesLocalBackend)
+        XCTAssertEqual(hostedClient.configurationLabel, "Hosted API")
+    }
+
     func testDecoderAcceptsFractionalUTCDate() throws {
         let json = """
         {

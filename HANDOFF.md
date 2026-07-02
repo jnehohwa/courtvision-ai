@@ -625,6 +625,15 @@ solely to increase contribution activity.
   (`1051.54.0` versus Xcode's `1051.55.0`) and no matching iPhone 17 simulator
   destination is available. GitHub Actions remains the native simulator-test
   authority for committed iOS changes.
+- On 2026-07-02, the native About/backend diagnostics increment passed:
+  `python3 tools/check_ios_rest_contract.py`,
+  `python3 tools/check_ios_websocket_contract.py`, `git diff --check`, and
+  `xcodebuild build -project apps/ios/CourtVision.xcodeproj -scheme CourtVision -destination 'generic/platform=iOS Simulator' -derivedDataPath .xcode-derived-data`.
+  The About tab now displays whether the app is using the local fixture API or
+  a hosted API, shows the REST and WebSocket endpoint roots, and warns that a
+  physical iPhone needs a hosted backend URL when the app is still configured
+  for localhost. The same local CoreSimulator out-of-date warning appeared, but
+  the generic simulator build succeeded.
 - On 2026-07-01, the Redis replay diagnostic follow-up moved E2E launcher and
   worker markers to stderr so Playwright web-server logs expose them, made the
   web replay client require a `{status: "started"}` response instead of any
