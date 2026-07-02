@@ -259,6 +259,8 @@ async def websocket_game(websocket: WebSocket, game_id: str, after_sequence: int
                     ).model_dump(mode="json")
                 )
     except WebSocketDisconnect:
+        pass
+    finally:
         await connection_manager.disconnect(game_id, websocket)
 
 

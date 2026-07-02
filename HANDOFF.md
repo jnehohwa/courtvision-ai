@@ -338,6 +338,11 @@ Completed in this continuation:
     sequence successfully delivered per connected socket. Heartbeat frames now
     use that tracked sequence after replay events stream over the connection,
     and lower-sequence status frames cannot rewind the resume point.
+72. Made WebSocket connection cleanup unconditional when a game socket handler
+    exits. Expected `WebSocketDisconnect` exceptions are swallowed, unexpected
+    exceptions still propagate, and the connection manager unregisters the
+    socket in a `finally` block so heartbeat/send edge cases do not leave stale
+    local subscribers behind.
 
 ## Important Product Boundaries
 
@@ -566,6 +571,21 @@ solely to increase contribution activity.
   The deployment-state check still reported zero GitHub deployments, no Vercel
   check-runs, no local Vercel link, no Vercel CLI, and `Verdict: not deployed
   to Vercel yet`.
+  Remote GitHub Actions run `28585855894` passed for commit
+  `78a4ba89a1bcc6e0e0065861abe7dcc38da350ca`: backend, web,
+  `redis-integration`, `e2e`, `e2e-redis`, and iOS were all green.
+- On 2026-07-02, the WebSocket unconditional cleanup increment passed:
+  `PYTHONPATH=apps/api:ml .venv/bin/pytest apps/api/tests/test_api.py apps/api/tests/test_broadcast.py -q`
+  (`12 passed`),
+  `PYTHONPATH=apps/api:ml .venv/bin/ruff check apps/api ml tools`,
+  `PYTHONPATH=apps/api:ml .venv/bin/pytest -q`
+  (`99 passed, 3 skipped`),
+  `.venv/bin/python tools/check_deployment_readiness.py`, and
+  `export GH_CONFIG_DIR="$HOME/Library/Application Support/gh"; .venv/bin/python tools/check_public_deployment_state.py`.
+  The deployment-state check reported commit
+  `78a4ba89a1bcc6e0e0065861abe7dcc38da350ca`, zero GitHub deployments, no
+  Vercel check-runs, no local Vercel link, no Vercel CLI, and `Verdict: not
+  deployed to Vercel yet`.
 - On 2026-07-01, the Redis replay diagnostic follow-up moved E2E launcher and
   worker markers to stderr so Playwright web-server logs expose them, made the
   web replay client require a `{status: "started"}` response instead of any
