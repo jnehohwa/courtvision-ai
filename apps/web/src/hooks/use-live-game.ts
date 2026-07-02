@@ -58,16 +58,17 @@ export function useLiveGame(gameId: string) {
   const socketRef = useRef<WebSocket | null>(null);
   const lastSeenSequence = useRef(-1);
   const snapshotReady = snapshot?.game.id === gameId;
+  const visibleSnapshot = snapshotReady ? snapshot : null;
+  const visibleTimeline = snapshotReady ? timeline : [];
+  const visibleIsReplaying = snapshotReady && isReplaying;
+  const visibleLiveModelVersion = snapshotReady ? liveModelVersion : undefined;
 
   useEffect(() => {
     const controller = new AbortController();
-    setSnapshot(null);
-    setTimeline([]);
-    setLiveModelVersion(undefined);
-    setIsReplaying(false);
     lastSeenSequence.current = -1;
     void fetchLiveSnapshot(gameId, controller.signal)
       .then((value) => {
+        if (controller.signal.aborted) return;
         setSnapshot(value);
         setTimeline(value.timeline);
         setLiveModelVersion(value.live_model_version);
@@ -191,6 +192,7 @@ export function useLiveGame(gameId: string) {
   }, [connectionState, gameId, isReplaying]);
 
   const startReplay = useCallback(async () => {
+    if (!visibleSnapshot) return;
     setIsReplaying(true);
     try {
       const replayStarted = await startReplayRequest(gameId);
@@ -199,15 +201,15 @@ export function useLiveGame(gameId: string) {
       // Restore the last valid timeline if the local replay bridge is unavailable.
     }
     setIsReplaying(false);
-    setTimeline(snapshot?.timeline ?? []);
-  }, [gameId, snapshot]);
+    setTimeline(visibleSnapshot.timeline);
+  }, [gameId, visibleSnapshot]);
 
   return {
-    snapshot,
-    timeline,
+    snapshot: visibleSnapshot,
+    timeline: visibleTimeline,
     connectionState,
-    isReplaying,
-    liveModelVersion,
+    isReplaying: visibleIsReplaying,
+    liveModelVersion: visibleLiveModelVersion,
     startReplay,
   };
 }

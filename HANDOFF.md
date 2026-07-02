@@ -345,9 +345,9 @@ Completed in this continuation:
     local subscribers behind.
 73. Hardened the web live-game hook when switching games. The WebSocket now
     opens only after the authoritative snapshot belongs to the selected game,
-    and stale snapshot/timeline/model/replay state is cleared before fetching
-    the next game so a new game cannot subscribe with the previous game's
-    resume sequence. Added a focused hook regression test with a mocked
+    and the hook derives visible snapshot/timeline/model/replay state from the
+    currently selected game so a new game cannot subscribe with the previous
+    game's resume sequence. Added a focused hook regression test with a mocked
     WebSocket and controlled snapshot resolution.
 
 ## Important Product Boundaries
@@ -596,14 +596,19 @@ solely to increase contribution activity.
   `ed783dcc26d7d408f136b34012c6dec856e96947`: backend, web,
   `redis-integration`, `e2e`, `e2e-redis`, and iOS were all green.
 - On 2026-07-02, the web game-switch WebSocket guard passed `git diff --check`.
-  Local web test execution was blocked by the machine's incomplete pnpm install:
+  The first pushed version failed the GitHub Actions web lint job with
+  `react-hooks/set-state-in-effect` because it synchronously cleared React
+  state inside the snapshot-fetch effect. The follow-up fix derives the visible
+  state from `snapshot.game.id === gameId` and only resets the transient
+  sequence ref before fetching. Local web test execution was blocked by the
+  machine's incomplete pnpm install:
   `pnpm --filter @courtvision/web exec vitest run src/hooks/use-live-game.test.tsx`,
   focused ESLint, and `tsc --noEmit` all triggered dependency rehydration and
   slow registry metadata/tarball retries; a direct Vitest invocation reached
   startup but failed because the interrupted install was missing Rollup's
-  native optional package `@rollup/rollup-darwin-arm64`. The pushed commit's
-  GitHub Actions web job should be treated as the authoritative verifier for
-  this increment.
+  native optional package `@rollup/rollup-darwin-arm64`. The corrective pushed
+  commit's GitHub Actions web job should be treated as the authoritative
+  verifier for this increment.
 - On 2026-07-01, the Redis replay diagnostic follow-up moved E2E launcher and
   worker markers to stderr so Playwright web-server logs expose them, made the
   web replay client require a `{status: "started"}` response instead of any
