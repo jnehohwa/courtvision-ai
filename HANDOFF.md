@@ -343,6 +343,12 @@ Completed in this continuation:
     exceptions still propagate, and the connection manager unregisters the
     socket in a `finally` block so heartbeat/send edge cases do not leave stale
     local subscribers behind.
+73. Hardened the web live-game hook when switching games. The WebSocket now
+    opens only after the authoritative snapshot belongs to the selected game,
+    and stale snapshot/timeline/model/replay state is cleared before fetching
+    the next game so a new game cannot subscribe with the previous game's
+    resume sequence. Added a focused hook regression test with a mocked
+    WebSocket and controlled snapshot resolution.
 
 ## Important Product Boundaries
 
@@ -586,6 +592,18 @@ solely to increase contribution activity.
   `78a4ba89a1bcc6e0e0065861abe7dcc38da350ca`, zero GitHub deployments, no
   Vercel check-runs, no local Vercel link, no Vercel CLI, and `Verdict: not
   deployed to Vercel yet`.
+  Remote GitHub Actions run `28586267564` passed for commit
+  `ed783dcc26d7d408f136b34012c6dec856e96947`: backend, web,
+  `redis-integration`, `e2e`, `e2e-redis`, and iOS were all green.
+- On 2026-07-02, the web game-switch WebSocket guard passed `git diff --check`.
+  Local web test execution was blocked by the machine's incomplete pnpm install:
+  `pnpm --filter @courtvision/web exec vitest run src/hooks/use-live-game.test.tsx`,
+  focused ESLint, and `tsc --noEmit` all triggered dependency rehydration and
+  slow registry metadata/tarball retries; a direct Vitest invocation reached
+  startup but failed because the interrupted install was missing Rollup's
+  native optional package `@rollup/rollup-darwin-arm64`. The pushed commit's
+  GitHub Actions web job should be treated as the authoritative verifier for
+  this increment.
 - On 2026-07-01, the Redis replay diagnostic follow-up moved E2E launcher and
   worker markers to stderr so Playwright web-server logs expose them, made the
   web replay client require a `{status: "started"}` response instead of any

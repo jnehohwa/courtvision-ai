@@ -57,10 +57,15 @@ export function useLiveGame(gameId: string) {
   const reconnectAttempt = useRef(0);
   const socketRef = useRef<WebSocket | null>(null);
   const lastSeenSequence = useRef(-1);
-  const snapshotReady = snapshot !== null;
+  const snapshotReady = snapshot?.game.id === gameId;
 
   useEffect(() => {
     const controller = new AbortController();
+    setSnapshot(null);
+    setTimeline([]);
+    setLiveModelVersion(undefined);
+    setIsReplaying(false);
+    lastSeenSequence.current = -1;
     void fetchLiveSnapshot(gameId, controller.signal)
       .then((value) => {
         setSnapshot(value);
