@@ -9,8 +9,12 @@ xcodegen generate
 open CourtVision.xcodeproj
 ```
 
-The simulator client defaults to `http://127.0.0.1:8000`. Set the
-`COURTVISION_API_URL` launch environment variable to use another backend.
+The client defaults to `http://127.0.0.1:8000`. For simulator and XCTest runs,
+set the `COURTVISION_API_URL` launch environment variable to use another
+backend. For an installed device or TestFlight-style build, set the
+`COURTVISION_API_URL` Xcode build setting; it is embedded into
+`CourtVisionAPIBaseURL` in `Info.plist`. Launch environment values still take
+priority for local testing.
 
 The game room fetches an authoritative snapshot before opening its WebSocket,
 reconnects from the last observed sequence with bounded exponential backoff,

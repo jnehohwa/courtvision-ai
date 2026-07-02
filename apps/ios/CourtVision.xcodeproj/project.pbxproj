@@ -340,6 +340,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				COURTVISION_API_URL = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = CourtVision/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -441,6 +442,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				COURTVISION_API_URL = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = CourtVision/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (

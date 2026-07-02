@@ -15,6 +15,10 @@ enum APIError: LocalizedError {
 }
 
 struct APIClient: Sendable {
+    private static let environmentBaseURLKey = "COURTVISION_API_URL"
+    private static let plistBaseURLKey = "CourtVisionAPIBaseURL"
+    private static let localBaseURL = URL(string: "http://127.0.0.1:8000")!
+
     let baseURL: URL
     let session: URLSession
 
@@ -27,8 +31,37 @@ struct APIClient: Sendable {
     }
 
     static var defaultBaseURL: URL {
-        let configured = ProcessInfo.processInfo.environment["COURTVISION_API_URL"]
-        return URL(string: configured ?? "http://127.0.0.1:8000")!
+        configuredBaseURL(
+            environment: ProcessInfo.processInfo.environment,
+            infoDictionary: Bundle.main.infoDictionary
+        )
+    }
+
+    static func configuredBaseURL(
+        environment: [String: String],
+        infoDictionary: [String: Any]?
+    ) -> URL {
+        if let url = validBaseURL(environment[environmentBaseURLKey]) {
+            return url
+        }
+        if let url = validBaseURL(infoDictionary?[plistBaseURLKey] as? String) {
+            return url
+        }
+        return localBaseURL
+    }
+
+    private static func validBaseURL(_ value: String?) -> URL? {
+        guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !trimmed.isEmpty,
+              !trimmed.contains("$("),
+              let url = URL(string: trimmed),
+              let scheme = url.scheme?.lowercased(),
+              ["http", "https"].contains(scheme),
+              url.host != nil
+        else {
+            return nil
+        }
+        return url
     }
 
     static func makeDecoder() -> JSONDecoder {

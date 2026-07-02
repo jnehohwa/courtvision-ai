@@ -349,6 +349,12 @@ Completed in this continuation:
     currently selected game so a new game cannot subscribe with the previous
     game's resume sequence. Added a focused hook regression test with a mocked
     WebSocket and controlled snapshot resolution.
+74. Added an iOS device-build API URL configuration path. `APIClient` now
+    resolves the backend URL from `COURTVISION_API_URL` launch environment
+    first, then the `CourtVisionAPIBaseURL` Info.plist value populated by the
+    `COURTVISION_API_URL` Xcode build setting, then localhost. Empty values and
+    unresolved `$(...)` placeholders are ignored so simulator defaults remain
+    safe until a hosted API URL is supplied for an installed/TestFlight build.
 
 ## Important Product Boundaries
 
@@ -609,6 +615,16 @@ solely to increase contribution activity.
   native optional package `@rollup/rollup-darwin-arm64`. The corrective pushed
   commit's GitHub Actions web job should be treated as the authoritative
   verifier for this increment.
+- On 2026-07-02, the iOS device-build API URL configuration increment passed:
+  `python3 tools/check_ios_rest_contract.py`,
+  `python3 tools/check_ios_websocket_contract.py`, plist parsing for
+  `CourtVisionAPIBaseURL`, `git diff --check`, and
+  `xcodebuild build -project apps/ios/CourtVision.xcodeproj -scheme CourtVision -destination 'generic/platform=iOS Simulator' -derivedDataPath .xcode-derived-data`.
+  Local `xcodebuild test` against `platform=iOS Simulator,name=iPhone 17,OS=26.5`
+  could not run because this Mac's CoreSimulator service is out of date
+  (`1051.54.0` versus Xcode's `1051.55.0`) and no matching iPhone 17 simulator
+  destination is available. GitHub Actions remains the native simulator-test
+  authority for committed iOS changes.
 - On 2026-07-01, the Redis replay diagnostic follow-up moved E2E launcher and
   worker markers to stderr so Playwright web-server logs expose them, made the
   web replay client require a `{status: "started"}` response instead of any

@@ -145,6 +145,39 @@ final class APIModelsTests: XCTestCase {
         XCTAssertEqual(APIClient.apiDateString(from: date), "2026-06-14")
     }
 
+    func testConfiguredBaseURLUsesEnvironmentBeforeInfoPlist() {
+        let url = APIClient.configuredBaseURL(
+            environment: ["COURTVISION_API_URL": "https://env-api.courtvision.test"],
+            infoDictionary: [
+                "CourtVisionAPIBaseURL": "https://plist-api.courtvision.test"
+            ]
+        )
+
+        XCTAssertEqual(url.absoluteString, "https://env-api.courtvision.test")
+    }
+
+    func testConfiguredBaseURLUsesInfoPlistForDeviceBuilds() {
+        let url = APIClient.configuredBaseURL(
+            environment: [:],
+            infoDictionary: [
+                "CourtVisionAPIBaseURL": "https://api.courtvision.test"
+            ]
+        )
+
+        XCTAssertEqual(url.absoluteString, "https://api.courtvision.test")
+    }
+
+    func testConfiguredBaseURLIgnoresPlaceholdersAndFallsBackToLocalhost() {
+        let url = APIClient.configuredBaseURL(
+            environment: ["COURTVISION_API_URL": ""],
+            infoDictionary: [
+                "CourtVisionAPIBaseURL": "$(COURTVISION_API_URL)"
+            ]
+        )
+
+        XCTAssertEqual(url.absoluteString, "http://127.0.0.1:8000")
+    }
+
     func testDecoderAcceptsFractionalUTCDate() throws {
         let json = """
         {

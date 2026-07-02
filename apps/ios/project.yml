@@ -19,6 +19,7 @@ targets:
       path: CourtVision/Info.plist
       properties:
         CFBundleDisplayName: CourtVision AI
+        CourtVisionAPIBaseURL: $(COURTVISION_API_URL)
         UILaunchScreen: {}
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
@@ -26,6 +27,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ai.courtvision.app
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        COURTVISION_API_URL: ""
         GENERATE_INFOPLIST_FILE: false
     scheme:
       testTargets:
