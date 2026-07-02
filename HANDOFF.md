@@ -634,6 +634,15 @@ solely to increase contribution activity.
   physical iPhone needs a hosted backend URL when the app is still configured
   for localhost. The same local CoreSimulator out-of-date warning appeared, but
   the generic simulator build succeeded.
+- On 2026-07-02, the iOS API diagnostics increment passed:
+  `python3 tools/check_ios_rest_contract.py`,
+  `python3 tools/check_ios_websocket_contract.py`, `git diff --check`, and
+  `xcodebuild build-for-testing -project apps/ios/CourtVision.xcodeproj -scheme CourtVision -destination 'generic/platform=iOS Simulator' -derivedDataPath .xcode-derived-data`.
+  `APIClient` now preserves FastAPI JSON `detail` messages on non-2xx
+  responses, so device/TestFlight users see actionable backend errors such as
+  `Game not found` or `Rate limit exceeded` instead of only a numeric status.
+  The local CoreSimulator warning still appears, but the app and XCTest bundle
+  compile successfully with the generic simulator destination.
 - On 2026-07-01, the Redis replay diagnostic follow-up moved E2E launcher and
   worker markers to stderr so Playwright web-server logs expose them, made the
   web replay client require a `{status: "started"}` response instead of any

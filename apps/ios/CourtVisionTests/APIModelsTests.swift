@@ -435,6 +435,46 @@ final class APIModelsTests: XCTestCase {
         XCTAssertEqual(response.attempts.first?.expectedPoints, 1.02)
     }
 
+    func testAPIClientSurfacesServerErrorDetail() async throws {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [ShotQualityURLProtocol.self]
+        let session = URLSession(configuration: configuration)
+        defer {
+            ShotQualityURLProtocol.requestHandler = nil
+            session.invalidateAndCancel()
+        }
+
+        ShotQualityURLProtocol.requestHandler = { request in
+            guard let url = request.url else {
+                throw URLProtocolTestError.invalidURL
+            }
+            let response = try XCTUnwrap(
+                HTTPURLResponse(
+                    url: url,
+                    statusCode: 404,
+                    httpVersion: nil,
+                    headerFields: ["Content-Type": "application/json"]
+                )
+            )
+            return (response, Data(#"{"detail":"Game not found"}"#.utf8))
+        }
+
+        let client = APIClient(
+            baseURL: URL(string: "https://courtvision.test")!,
+            session: session
+        )
+
+        do {
+            _ = try await client.game(gameID: "missing-game")
+            XCTFail("Expected the API client to throw the server detail.")
+        } catch APIError.server(let statusCode, let detail) {
+            XCTAssertEqual(statusCode, 404)
+            XCTAssertEqual(detail, "Game not found")
+        } catch {
+            XCTFail("Expected APIError.server, got \(error).")
+        }
+    }
+
     private static func requestBodyData(from request: URLRequest) throws -> Data {
         if let body = request.httpBody {
             return body
