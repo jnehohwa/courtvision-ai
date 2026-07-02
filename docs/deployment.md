@@ -120,8 +120,12 @@ export GH_CONFIG_DIR="$HOME/Library/Application Support/gh"
 python tools/check_public_deployment_state.py
 ```
 
+If GitHub evidence cannot be queried because auth, network, or JSON parsing
+fails, the check reports that evidence as `unknown` and returns
+`Verdict: unable to confirm deployment state`.
+
 Verified on 2026-07-02 against commit
-`fbacf690fc1f2b4afd9e74414f13323f8cf54365`:
+`9af76abd8dc72b151cb900880f93f79a625ba0a7`:
 
 - GitHub Deployments API for `jnehohwa/courtvision-ai` returned `[]`.
 - The commit's check-runs are GitHub Actions jobs only: `backend`, `web`,

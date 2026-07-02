@@ -118,7 +118,9 @@ python tools/check_public_deployment_state.py
 ```
 
 That read-only check reports GitHub deployments, Vercel check-runs on the
-current commit, local `.vercel` linkage, and Vercel CLI availability.
+current commit, local `.vercel` linkage, and Vercel CLI availability. If a
+GitHub query fails, the verdict is `unable to confirm deployment state` instead
+of pretending failed evidence means no deployment exists.
 
 The API also validates production settings at startup. A production deployment
 must provide a non-default internal API key, hosted PostgreSQL and Redis URLs,

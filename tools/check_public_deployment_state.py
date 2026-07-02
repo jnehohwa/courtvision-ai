@@ -23,21 +23,35 @@ RunCommand = Callable[[Sequence[str]], subprocess.CompletedProcess[str]]
 
 
 @dataclass(frozen=True)
+class GitHubQuery:
+    items: list[dict[str, Any]] = field(default_factory=list)
+    error: str | None = None
+
+    @property
+    def available(self) -> bool:
+        return self.error is None
+
+
+@dataclass(frozen=True)
 class DeploymentState:
     repository: str
     commit: str | None
-    github_deployments: list[dict[str, Any]] = field(default_factory=list)
-    check_runs: list[dict[str, Any]] = field(default_factory=list)
+    github_deployments: GitHubQuery = field(default_factory=GitHubQuery)
+    check_runs: GitHubQuery = field(default_factory=GitHubQuery)
     vercel_project_linked: bool = False
     vercel_cli_available: bool = False
 
     @property
     def has_github_deployments(self) -> bool:
-        return len(self.github_deployments) > 0
+        return len(self.github_deployments.items) > 0
 
     @property
     def has_vercel_check_runs(self) -> bool:
-        return any(is_vercel_check_run(check_run) for check_run in self.check_runs)
+        return any(is_vercel_check_run(check_run) for check_run in self.check_runs.items)
+
+    @property
+    def evidence_available(self) -> bool:
+        return self.github_deployments.available and self.check_runs.available
 
     @property
     def is_deployed_to_vercel(self) -> bool:
@@ -54,13 +68,23 @@ def run_command(command: Sequence[str]) -> subprocess.CompletedProcess[str]:
     )
 
 
-def load_json_output(result: subprocess.CompletedProcess[str], *, fallback: Any) -> Any:
+def command_error(result: subprocess.CompletedProcess[str]) -> str:
+    detail = (result.stderr or result.stdout).strip()
+    if detail:
+        return f"command exited {result.returncode}: {detail}"
+    return f"command exited {result.returncode}"
+
+
+def load_json_list(result: subprocess.CompletedProcess[str]) -> GitHubQuery:
     if result.returncode != 0:
-        return fallback
+        return GitHubQuery(error=command_error(result))
     try:
-        return json.loads(result.stdout or "null")
-    except json.JSONDecodeError:
-        return fallback
+        payload = json.loads(result.stdout or "null")
+    except json.JSONDecodeError as exc:
+        return GitHubQuery(error=f"invalid JSON: {exc.msg}")
+    if not isinstance(payload, list):
+        return GitHubQuery(error=f"expected a JSON list, got {type(payload).__name__}")
+    return GitHubQuery(items=[item for item in payload if isinstance(item, dict)])
 
 
 def current_commit(run: RunCommand = run_command) -> str | None:
@@ -70,7 +94,7 @@ def current_commit(run: RunCommand = run_command) -> str | None:
     return result.stdout.strip() or None
 
 
-def github_deployments(repository: str, run: RunCommand = run_command) -> list[dict[str, Any]]:
+def github_deployments(repository: str, run: RunCommand = run_command) -> GitHubQuery:
     result = run(
         [
             "gh",
@@ -80,19 +104,16 @@ def github_deployments(repository: str, run: RunCommand = run_command) -> list[d
             ".",
         ]
     )
-    deployments = load_json_output(result, fallback=[])
-    if isinstance(deployments, list):
-        return [item for item in deployments if isinstance(item, dict)]
-    return []
+    return load_json_list(result)
 
 
 def github_check_runs(
     repository: str,
     commit: str | None,
     run: RunCommand = run_command,
-) -> list[dict[str, Any]]:
+) -> GitHubQuery:
     if not commit:
-        return []
+        return GitHubQuery(error="current commit unavailable")
     result = run(
         [
             "gh",
@@ -102,10 +123,7 @@ def github_check_runs(
             ".check_runs",
         ]
     )
-    check_runs = load_json_output(result, fallback=[])
-    if isinstance(check_runs, list):
-        return [item for item in check_runs if isinstance(item, dict)]
-    return []
+    return load_json_list(result)
 
 
 def is_vercel_check_run(check_run: dict[str, Any]) -> bool:
@@ -138,16 +156,30 @@ def summarize_state(state: DeploymentState) -> str:
         "CourtVision AI public deployment state",
         f"- Repository: {state.repository}",
         f"- Commit: {state.commit or 'unknown'}",
-        f"- GitHub deployments: {len(state.github_deployments)}",
-        f"- Vercel check-runs on commit: {'yes' if state.has_vercel_check_runs else 'no'}",
+        f"- GitHub deployments: {deployment_count_summary(state.github_deployments)}",
+        f"- Vercel check-runs on commit: {check_run_summary(state)}",
         f"- Local Vercel project link: {'yes' if state.vercel_project_linked else 'no'}",
         f"- Vercel CLI on PATH: {'yes' if state.vercel_cli_available else 'no'}",
     ]
     if state.is_deployed_to_vercel:
         lines.append("- Verdict: deployment evidence found")
+    elif not state.evidence_available:
+        lines.append("- Verdict: unable to confirm deployment state")
     else:
         lines.append("- Verdict: not deployed to Vercel yet")
     return "\n".join(lines)
+
+
+def deployment_count_summary(query: GitHubQuery) -> str:
+    if query.error:
+        return f"unknown ({query.error})"
+    return str(len(query.items))
+
+
+def check_run_summary(state: DeploymentState) -> str:
+    if state.check_runs.error:
+        return f"unknown ({state.check_runs.error})"
+    return "yes" if state.has_vercel_check_runs else "no"
 
 
 def main() -> int:

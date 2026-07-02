@@ -330,6 +330,10 @@ Completed in this continuation:
     availability. The current verified state remains not deployed to Vercel:
     zero GitHub deployments, no Vercel check-runs, no local Vercel link, and no
     Vercel CLI on `PATH`.
+70. Hardened the deployment-state checker so failed GitHub API queries, invalid
+    JSON, or missing commit state report `unknown` evidence and
+    `Verdict: unable to confirm deployment state` instead of incorrectly
+    treating unavailable evidence as zero deployments.
 
 ## Important Product Boundaries
 
@@ -535,10 +539,10 @@ solely to increase contribution activity.
   in the Actions log.
 - On 2026-07-02, the public deployment-state checker increment passed:
   `PYTHONPATH=apps/api:ml .venv/bin/pytest apps/api/tests/test_public_deployment_state.py -q`
-  (`4 passed`),
+  (`5 passed` after the unavailable-evidence guard was added),
   `PYTHONPATH=apps/api:ml .venv/bin/ruff check apps/api ml tools`,
   `PYTHONPATH=apps/api:ml .venv/bin/pytest -q`
-  (`97 passed, 3 skipped`),
+  (`98 passed, 3 skipped`),
   `.venv/bin/python tools/check_deployment_readiness.py`, and
   `export GH_CONFIG_DIR="$HOME/Library/Application Support/gh"; .venv/bin/python tools/check_public_deployment_state.py`.
   The read-only deployment check reported zero GitHub deployments, no Vercel

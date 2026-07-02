@@ -17,6 +17,7 @@ sys.modules[SPEC.name] = deployment_state
 LOADER.exec_module(deployment_state)
 
 DeploymentState = deployment_state.DeploymentState
+GitHubQuery = deployment_state.GitHubQuery
 is_vercel_check_run = deployment_state.is_vercel_check_run
 load_deployment_state = deployment_state.load_deployment_state
 summarize_state = deployment_state.summarize_state
@@ -48,7 +49,8 @@ def test_load_state_without_deployment_evidence(tmp_path: Path) -> None:
     state = load_deployment_state(repository="owner/repo", root=tmp_path, run=run)
 
     assert state.commit == "abc123"
-    assert state.github_deployments == []
+    assert state.github_deployments.items == []
+    assert state.github_deployments.error is None
     assert not state.has_vercel_check_runs
     assert not state.vercel_project_linked
     assert not state.is_deployed_to_vercel
@@ -77,13 +79,34 @@ def test_load_state_detects_deployment_and_local_vercel_link(tmp_path: Path) -> 
     assert state.is_deployed_to_vercel
 
 
+def test_load_state_keeps_failed_github_queries_unknown(tmp_path: Path) -> None:
+    def run(command: Sequence[str]) -> subprocess.CompletedProcess[str]:
+        if command[:3] == ["git", "rev-parse", "HEAD"]:
+            return completed("abc123\n")
+        if "deployments" in command[2]:
+            return completed("gh auth failed", returncode=1)
+        if "check-runs" in command[2]:
+            return completed("not json")
+        raise AssertionError(f"unexpected command: {command}")
+
+    state = load_deployment_state(repository="owner/repo", root=tmp_path, run=run)
+    summary = summarize_state(state)
+
+    assert state.github_deployments.error == "command exited 1: gh auth failed"
+    assert state.check_runs.error == "invalid JSON: Expecting value"
+    assert not state.evidence_available
+    assert "GitHub deployments: unknown (command exited 1: gh auth failed)" in summary
+    assert "Vercel check-runs on commit: unknown (invalid JSON: Expecting value)" in summary
+    assert "Verdict: unable to confirm deployment state" in summary
+
+
 def test_summary_keeps_not_deployed_verdict_explicit() -> None:
     summary = summarize_state(
         DeploymentState(
             repository="owner/repo",
             commit="abc123",
-            github_deployments=[],
-            check_runs=[],
+            github_deployments=GitHubQuery(),
+            check_runs=GitHubQuery(),
             vercel_project_linked=False,
             vercel_cli_available=False,
         )
