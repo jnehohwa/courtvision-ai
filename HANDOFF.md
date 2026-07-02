@@ -548,6 +548,9 @@ solely to increase contribution activity.
   The read-only deployment check reported zero GitHub deployments, no Vercel
   check-runs on the current commit, no local `.vercel/project.json`, no Vercel
   CLI on `PATH`, and `Verdict: not deployed to Vercel yet`.
+  Remote GitHub Actions run `28573557494` passed for commit
+  `0ce75f3ceccd3e604fb8235b67ca808468782bbc`: backend, web,
+  `redis-integration`, `e2e`, `e2e-redis`, and iOS were all green.
 - On 2026-07-01, the Redis replay diagnostic follow-up moved E2E launcher and
   worker markers to stderr so Playwright web-server logs expose them, made the
   web replay client require a `{status: "started"}` response instead of any
