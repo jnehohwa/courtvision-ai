@@ -18,6 +18,7 @@ CourtVision AI has a verified replay-first vertical slice:
 - Shared OpenAPI and WebSocket contracts
 - Docker Compose, Render configuration, and CI
 - CI deployment-readiness preflight for Vercel/Render handoff drift
+- Read-only public deployment-state checker for Vercel/GitHub evidence
 - Vercel-ready web project config, but no authenticated Vercel deployment yet
 
 ## Verification Baseline
@@ -323,6 +324,12 @@ Completed in this continuation:
     startup. Health checks still use their own short Redis timeout. A focused
     regression test now verifies the EventBus client keeps blocking commands
     free of `socket_timeout`.
+69. Added `tools/check_public_deployment_state.py`, a read-only deployment
+    evidence checker that reports GitHub deployments, Vercel check-runs on the
+    current commit, local `.vercel/project.json` linkage, and Vercel CLI
+    availability. The current verified state remains not deployed to Vercel:
+    zero GitHub deployments, no Vercel check-runs, no local Vercel link, and no
+    Vercel CLI on `PATH`.
 
 ## Important Product Boundaries
 
@@ -392,6 +399,13 @@ Completed in this continuation:
    has stable hosted REST/WebSocket URLs and the deployment preflight passes, or
    continue local/replay-first product hardening while keeping the Vercel-ready
    versus deployed distinction honest.
+
+   To re-check the public deployment evidence, run:
+
+   ```bash
+   export GH_CONFIG_DIR="$HOME/Library/Application Support/gh"
+   .venv/bin/python tools/check_public_deployment_state.py
+   ```
 
 7. If deploying next, link Vercel with `apps/web` as the project root and set
    the environment variables in `docs/deployment.md`. Do not mark the web app
@@ -519,6 +533,17 @@ solely to increase contribution activity.
   integration, non-Redis e2e, and iOS passed, but `e2e-redis` still failed
   with zero `play_added` frames and no visible worker/event-bus lifecycle lines
   in the Actions log.
+- On 2026-07-02, the public deployment-state checker increment passed:
+  `PYTHONPATH=apps/api:ml .venv/bin/pytest apps/api/tests/test_public_deployment_state.py -q`
+  (`4 passed`),
+  `PYTHONPATH=apps/api:ml .venv/bin/ruff check apps/api ml tools`,
+  `PYTHONPATH=apps/api:ml .venv/bin/pytest -q`
+  (`97 passed, 3 skipped`),
+  `.venv/bin/python tools/check_deployment_readiness.py`, and
+  `export GH_CONFIG_DIR="$HOME/Library/Application Support/gh"; .venv/bin/python tools/check_public_deployment_state.py`.
+  The read-only deployment check reported zero GitHub deployments, no Vercel
+  check-runs on the current commit, no local `.vercel/project.json`, no Vercel
+  CLI on `PATH`, and `Verdict: not deployed to Vercel yet`.
 - On 2026-07-01, the Redis replay diagnostic follow-up moved E2E launcher and
   worker markers to stderr so Playwright web-server logs expose them, made the
   web replay client require a `{status: "started"}` response instead of any

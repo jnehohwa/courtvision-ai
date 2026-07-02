@@ -112,12 +112,21 @@ CI runs the same preflight in the backend job.
 
 ## Current Status
 
-Verified on 2026-06-22 against commit
-`fe2f4b98065729a6537e01acce2f2a0aaec03d42`:
+Run the read-only status check whenever you need to answer whether the public
+web app is actually deployed:
+
+```bash
+export GH_CONFIG_DIR="$HOME/Library/Application Support/gh"
+python tools/check_public_deployment_state.py
+```
+
+Verified on 2026-07-02 against commit
+`fbacf690fc1f2b4afd9e74414f13323f8cf54365`:
 
 - GitHub Deployments API for `jnehohwa/courtvision-ai` returned `[]`.
 - The commit's check-runs are GitHub Actions jobs only: `backend`, `web`,
-  `e2e`, `redis-integration`, and `ios`; there are no Vercel check-runs.
+  `e2e`, `e2e-redis`, `redis-integration`, and `ios`; there are no Vercel
+  check-runs.
 - `apps/web/vercel.json` contains Vercel-ready project defaults.
 - No `.vercel/project.json` is committed or present locally, so the checkout is
   not linked to an authenticated Vercel project.

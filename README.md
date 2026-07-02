@@ -110,6 +110,16 @@ python tools/check_deployment_readiness.py
 CI runs the same check to keep Vercel defaults, Render service wiring, manual
 secret gates, and replay-first feature flags from drifting.
 
+To verify the current public deployment evidence without changing anything:
+
+```bash
+export GH_CONFIG_DIR="$HOME/Library/Application Support/gh"
+python tools/check_public_deployment_state.py
+```
+
+That read-only check reports GitHub deployments, Vercel check-runs on the
+current commit, local `.vercel` linkage, and Vercel CLI availability.
+
 The API also validates production settings at startup. A production deployment
 must provide a non-default internal API key, hosted PostgreSQL and Redis URLs,
 HTTPS CORS origins, and trusted proxy headers.
