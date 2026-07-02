@@ -239,11 +239,16 @@ async def websocket_game(websocket: WebSocket, game_id: str, after_sequence: int
         )
         for envelope in backlog_envelopes:
             await websocket.send_json(envelope.model_dump(mode="json"))
+            await connection_manager.note_sequence(websocket, envelope.sequence)
         last_sequence = backlog[-1].sequence if backlog else max(after_sequence, 0)
         while True:
             try:
                 await asyncio.wait_for(websocket.receive_text(), timeout=15)
             except TimeoutError:
+                last_sequence = await connection_manager.last_sequence(
+                    websocket,
+                    default=last_sequence,
+                )
                 await websocket.send_json(
                     status_envelope(
                         game,

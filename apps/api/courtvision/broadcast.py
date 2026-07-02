@@ -30,16 +30,19 @@ logger = structlog.get_logger()
 class ConnectionManager:
     def __init__(self) -> None:
         self._connections: dict[str, set[WebSocket]] = defaultdict(set)
+        self._last_sequences: dict[WebSocket, int] = {}
         self._lock = asyncio.Lock()
 
     async def connect(self, game_id: str, websocket: WebSocket) -> None:
         await websocket.accept()
         async with self._lock:
             self._connections[game_id].add(websocket)
+            self._last_sequences[websocket] = 0
 
     async def disconnect(self, game_id: str, websocket: WebSocket) -> None:
         async with self._lock:
             self._connections[game_id].discard(websocket)
+            self._last_sequences.pop(websocket, None)
 
     async def broadcast(self, envelope: WebSocketEnvelope) -> None:
         stale_connections: list[WebSocket] = []
@@ -47,6 +50,7 @@ class ConnectionManager:
         for connection in connections:
             try:
                 await connection.send_json(envelope.model_dump(mode="json"))
+                await self.note_sequence(connection, envelope.sequence)
             except Exception:
                 stale_connections.append(connection)
 
@@ -54,10 +58,24 @@ class ConnectionManager:
             async with self._lock:
                 for connection in stale_connections:
                     self._connections[envelope.game_id].discard(connection)
+                    self._last_sequences.pop(connection, None)
 
     async def count(self, game_id: str) -> int:
         async with self._lock:
             return len(self._connections[game_id])
+
+    async def note_sequence(self, websocket: WebSocket, sequence: int) -> None:
+        async with self._lock:
+            if websocket not in self._last_sequences:
+                return
+            self._last_sequences[websocket] = max(
+                self._last_sequences[websocket],
+                sequence,
+            )
+
+    async def last_sequence(self, websocket: WebSocket, default: int = 0) -> int:
+        async with self._lock:
+            return self._last_sequences.get(websocket, default)
 
 
 connection_manager = ConnectionManager()

@@ -1,6 +1,6 @@
 # CourtVision AI Handoff
 
-Last updated: 2026-07-01
+Last updated: 2026-07-02
 
 ## Current State
 
@@ -334,6 +334,10 @@ Completed in this continuation:
     JSON, or missing commit state report `unknown` evidence and
     `Verdict: unable to confirm deployment state` instead of incorrectly
     treating unavailable evidence as zero deployments.
+71. Made WebSocket resume metadata more accurate by tracking the highest
+    sequence successfully delivered per connected socket. Heartbeat frames now
+    use that tracked sequence after replay events stream over the connection,
+    and lower-sequence status frames cannot rewind the resume point.
 
 ## Important Product Boundaries
 
@@ -551,6 +555,17 @@ solely to increase contribution activity.
   Remote GitHub Actions run `28573557494` passed for commit
   `0ce75f3ceccd3e604fb8235b67ca808468782bbc`: backend, web,
   `redis-integration`, `e2e`, `e2e-redis`, and iOS were all green.
+- On 2026-07-02, the WebSocket heartbeat sequence tracking increment passed:
+  `PYTHONPATH=apps/api:ml .venv/bin/pytest apps/api/tests/test_broadcast.py apps/api/tests/test_api.py -q`
+  (`12 passed`),
+  `PYTHONPATH=apps/api:ml .venv/bin/ruff check apps/api ml tools`,
+  `PYTHONPATH=apps/api:ml .venv/bin/pytest -q`
+  (`99 passed, 3 skipped`),
+  `.venv/bin/python tools/check_deployment_readiness.py`, and
+  `export GH_CONFIG_DIR="$HOME/Library/Application Support/gh"; .venv/bin/python tools/check_public_deployment_state.py`.
+  The deployment-state check still reported zero GitHub deployments, no Vercel
+  check-runs, no local Vercel link, no Vercel CLI, and `Verdict: not deployed
+  to Vercel yet`.
 - On 2026-07-01, the Redis replay diagnostic follow-up moved E2E launcher and
   worker markers to stderr so Playwright web-server logs expose them, made the
   web replay client require a `{status: "started"}` response instead of any
